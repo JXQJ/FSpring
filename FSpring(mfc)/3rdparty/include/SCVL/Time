@@ -1,0 +1,258 @@
+/*
+*  Time
+*  Sogang Computer Vison Library
+*
+*  Created by Kimbom on 2017. 05. 23...
+*  Copyright 2017 Sogang CVIP lab. All rights reserved.
+*
+*/
+#if !defined(SOGANG_COMPUTER_VISION_LIBRARY_7E1_05_18_TIME_H_INCLUDED)
+#define SOGANG_COMPUTER_VISION_LIBRARY_7E1_05_18_TIME_H_INCLUDED
+#include<iostream>
+#include<vector>
+#include<string>
+#include<deque>
+#include<algorithm>
+#include<utility>
+#include<ctime>
+#include<cstring>
+#include<cstdio>
+#include"Console"
+#pragma warning(disable:4290)
+namespace scvl {
+	class IntervalTime;
+	///support types = char, int ,double ,std::string
+	struct PrimitiveTypeSaver {
+		int idx = -1;
+		char _1;
+		int _2;
+		double _3;
+		std::string _4;
+		friend class IntervalTime;
+		template<typename T>
+		void SetObject(T param) {
+			if (typeid(this->_1).hash_code() == typeid(param).hash_code()) {
+				this->idx = 1;
+				memcpy(&this->_1, &param, sizeof(char));
+			}
+			else if (typeid(this->_2).hash_code() == typeid(param).hash_code()) {
+				this->idx = 2;
+				memcpy(&this->_2, &param, sizeof(int));
+			}
+			else if (typeid(this->_3).hash_code() == typeid(param).hash_code()) {
+				this->idx = 3;
+				memcpy(&this->_3, &param, sizeof(double));
+			}
+			else if (typeid(char*).hash_code() == typeid(param).hash_code()
+				|| typeid(const char*).hash_code() == typeid(param).hash_code()
+				|| typeid(std::string).hash_code() == typeid(param).hash_code()
+				) {
+				this->idx = 4;
+				char* tmp;
+				memcpy(&tmp, &param, sizeof(char*));
+				this->_4 = tmp;
+			}
+		}
+	public:
+		bool operator==(PrimitiveTypeSaver& other)const {
+			if (this->idx != other.idx) {
+				return false;
+			}
+			else {
+				bool ret = false;
+				switch (this->idx) {
+				case 1:ret = this->_1 == other._1; break;
+				case 2:ret = this->_2 == other._2; break;
+				case 3:ret = std::fabs(this->_3 - other._3) < 0.0001; break;
+				case 4:ret = this->_4 == other._4; break;
+				default:break;
+				}
+				return ret;
+			}
+		}
+
+	};
+
+	class IntervalTime {
+	private:
+		IntervalTime() = delete;
+		~IntervalTime() = delete;
+	protected:
+		static std::vector<PrimitiveTypeSaver> mapped;
+		static std::vector<std::pair<double, int>/*time,count*/> accumulatedTime;
+		static std::vector<double> temp;
+		static std::deque<PrimitiveTypeSaver> stk;
+		static bool init;
+		template<typename CONTAINER>
+		static intptr_t GetPosInContainer(CONTAINER container, const PrimitiveTypeSaver& pts) {
+			intptr_t idx = -1;
+			while (idx++ + 1 < (intptr_t)container.size()) {
+				if (pts == container[idx] == true) {
+					break;
+				}
+			}
+			if (idx != -1 && idx < (intptr_t)container.size()) {
+				return idx;
+			}
+			else {
+				return -1;
+			}
+		}
+		static char* m_window;
+	public:
+		template<typename T>
+		static void StartClock(T param) {
+			using GENERIC_TYPE = typename std::enable_if<
+				std::is_same<char, T>::value
+				|| std::is_same<int, T>::value
+				|| std::is_same<float, T>::value
+				|| std::is_same<double, T>::value
+				|| std::is_same<char*, T>::value
+				|| std::is_same<const char*, T>::value
+				|| std::is_same<std::string, T>::value
+				, T>::type;
+			PrimitiveTypeSaver pts;
+			pts.SetObject(param);
+
+			if (IntervalTime::init == true) {
+				IntervalTime::init = false;
+				scvl::Console.Create(m_window, 1);
+			
+			}
+			intptr_t stkidx = IntervalTime::GetPosInContainer(IntervalTime::stk, pts);
+			if (stkidx != -1) {	//exist
+				throw std::exception("Startclock and endclock is not matched");
+			}
+			stk.push_back(pts);
+
+			intptr_t idx = IntervalTime::GetPosInContainer(IntervalTime::mapped, pts);
+			if (idx != -1) {
+				IntervalTime::temp[idx] = clock();
+			}
+			else {
+				IntervalTime::mapped.push_back(pts);
+				IntervalTime::accumulatedTime.push_back(std::make_pair(0.0, 0));
+				IntervalTime::temp.push_back(clock());
+			}
+		}
+		template<typename T>
+		static double EndClock(T param, bool print = true)throw(std::exception) {
+			using GENERIC_TYPE = typename std::enable_if<
+				std::is_same<char, T>::value
+				|| std::is_same<int, T>::value
+				|| std::is_same<float, T>::value
+				|| std::is_same<double, T>::value
+				|| std::is_same<char*, T>::value
+				|| std::is_same<const char*, T>::value
+				|| std::is_same<std::string, T>::value
+				, T>::type;
+			PrimitiveTypeSaver pts;
+			pts.SetObject(param);
+			intptr_t stkidx = IntervalTime::GetPosInContainer(IntervalTime::stk, pts);
+			if (stkidx == -1) {	//exist
+				throw std::exception("There is no StartClock of this object");
+			}
+			intptr_t depth = stkidx;
+			IntervalTime::stk.erase(IntervalTime::stk.begin() + stkidx);
+			intptr_t idx = IntervalTime::GetPosInContainer(IntervalTime::mapped, pts);
+			double time = 0.0;
+			if (idx != -1) {
+				time = (clock() - IntervalTime::temp[idx]) / CLOCKS_PER_SEC;
+				IntervalTime::accumulatedTime[idx].first += time;
+				IntervalTime::accumulatedTime[idx].second++;
+				if (print == true) {
+					size_t line = 0;
+					const int block = 20;
+					double accu = IntervalTime::accumulatedTime[idx].first;
+					double avg = IntervalTime::accumulatedTime[idx].first / IntervalTime::accumulatedTime[idx].second;
+					for (intptr_t i = 0; i < depth; i++) {
+						scvl::Console << m_window << "    ";
+						//std::cout << "\t";
+					}
+					std::ostringstream oss;
+					std::string temp;
+					switch (pts.idx) {
+					case 1:oss << pts._1; break;
+					case 2: oss << pts._2; break;
+					case 3:oss << pts._3;  break;
+					case 4:
+						temp.assign(pts._4.begin(), pts._4.begin() + std::min(static_cast<decltype(pts._4.length())>(20), pts._4.length()));
+						oss << temp;
+						break;
+					default:break;
+					}
+					scvl::Console <<  m_window << _Console::cstream::COLOR_WHITE <<  oss.str();
+					line += oss.str().length();
+					for (size_t i = oss.str().length(); i < block; i++) {
+						scvl::Console << m_window << ' ';
+						line++;
+					}
+				
+					std::string curr_interval_time = "[curr interval time],";
+					std::string accumulated_time = "[accumulated time],";
+					std::string average_time = "[average time]";
+					scvl::Console << m_window << _Console::cstream::COLOR_WHITE << curr_interval_time;
+					scvl::Console << m_window << _Console::cstream::COLOR_WHITE << accumulated_time;
+					scvl::Console << m_window << _Console::cstream::COLOR_WHITE << average_time << std::endl;
+					for (intptr_t i = 0; i<depth; i++) scvl::Console << m_window << "\t";
+					for (intptr_t i = 0; i < block + 1; i++)scvl::Console << m_window << ' ';		//consider bracket width
+					oss.str("");
+					oss << time;
+					line += curr_interval_time.length();
+					for (size_t i = oss.str().length(); i < curr_interval_time.length(); i++) {
+						oss << ' ';
+					}
+					scvl::Console << m_window << _Console::cstream::COLOR_WHITE << oss.str();
+					oss.str("");
+					oss << accu;
+					line += accumulated_time.length();
+					for (size_t i = oss.str().length(); i < accumulated_time.length(); i++) {
+						oss << ' ';
+					}
+					scvl::Console << m_window << _Console::cstream::COLOR_WHITE << oss.str();
+					oss.str("");
+					oss << avg;
+					line += average_time.length();
+					for (size_t i = oss.str().length(); i < average_time.length(); i++) {
+						oss << ' ';
+					}
+					scvl::Console << m_window << _Console::cstream::COLOR_WHITE << oss.str() << std::endl;
+					for (intptr_t i = 0; i < depth; i++) {
+						scvl::Console << m_window << _Console::cstream::COLOR_RED << "    ";
+					}
+					for (size_t i = 0; i < line;i++) {
+						scvl::Console << m_window << _Console::cstream::COLOR_RED << '-';
+					}
+					scvl::Console << m_window << std::endl;
+					
+				}
+			}
+			else {
+				throw std::exception("No matched begin entry point");
+			}
+			return time;
+		}
+	};
+	__declspec(selectany) std::vector<PrimitiveTypeSaver> IntervalTime::mapped;
+	__declspec(selectany) std::vector<std::pair<double, int>/*time,count*/> IntervalTime::accumulatedTime;
+	__declspec(selectany) std::vector<double> IntervalTime::temp;
+	__declspec(selectany) std::deque<PrimitiveTypeSaver> IntervalTime::stk;
+	__declspec(selectany) char* IntervalTime::m_window = "SCVL::IntervalTime";
+	__declspec(selectany) bool IntervalTime::init = true;
+}
+
+inline std::ostream& operator <<(std::ostream& _cout, const scvl::PrimitiveTypeSaver& out) {
+	std::string temp;
+	switch (out.idx) {
+	case 1:_cout << out._1; break;
+	case 2: _cout << out._2; break;
+	case 3: _cout << out._3;  break;
+	case 4:
+		temp.assign(out._4.begin(), out._4.begin() + std::min(static_cast<decltype(out._4.length())>(20), out._4.length()));
+		_cout << temp;
+		break;
+	default:break;
+	}
+	return _cout;
+}
+#endif

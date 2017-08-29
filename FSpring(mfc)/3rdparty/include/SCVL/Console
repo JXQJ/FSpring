@@ -1,0 +1,562 @@
+﻿/*
+*  Console
+*  Sogang Computer Vison Library
+*
+*  Created by Kimbom on 2017. 05. 24...
+*  Copyright 2017 Sogang CVIP lab. All rights reserved.
+*
+*/
+#if !defined(SOGANG_COMPUTER_VISION_LIBRARY_7E1_05_18_CONSOLE_H_INCLUDED)
+#define SOGANG_COMPUTER_VISION_LIBRARY_7E1_05_18_CONSOLE_H_INCLUDED
+#include<fstream>
+#include<sstream>
+#include<map>
+#include<array>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <ctime>
+#include <cstdio>
+#include <cstdlib>
+#include <fcntl.h>
+#include <io.h>
+#include <direct.h>
+#include <Shlwapi.h>
+#pragma comment(lib, "Shlwapi.lib")
+#include"Verify"
+#pragma warning(disable:4996)
+namespace scvl_3rdparty {
+	class CConsoleLogger {
+#define DEFAULT_HELPER_EXE	"SCVL_Console.exe"
+	public:
+		CConsoleLogger() {
+			InitializeCriticalSection();
+			m_name[0] = 0;
+			m_hPipe = INVALID_HANDLE_VALUE;
+		}
+		virtual ~CConsoleLogger() {
+			DeleteCriticalSection();
+		}
+		long Create(const char *lpszWindowTitle = NULL,
+			int buffer_size_x = -1, int buffer_size_y = -1,
+			const char *logger_name = NULL,
+			const char *helper_executable = NULL) {
+			if (m_hPipe != INVALID_HANDLE_VALUE) {
+				DisconnectNamedPipe(m_hPipe);
+				CloseHandle(m_hPipe);
+				m_hPipe = INVALID_HANDLE_VALUE;
+			}
+			strcpy(m_name, "\\\\.\\pipe\\");
+
+			if (!logger_name) {
+				unsigned long now = GetTickCount();
+				logger_name = m_name + strlen(m_name);
+				sprintf((char*)logger_name, "logger%p_%lu", this, now);
+			}
+			else {
+				strcat(m_name, logger_name);
+			}
+			m_hPipe = CreateNamedPipeA(m_name, PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 4096, 0, 1, NULL);
+			if (m_hPipe == INVALID_HANDLE_VALUE) {
+				MessageBoxA(NULL, "CreateNamedPipe failed", "ConsoleLogger failed", MB_OK);
+				return -1;
+			}
+			STARTUPINFOA si;
+			PROCESS_INFORMATION pi;
+			GetStartupInfoA(&si);
+			char cmdline[MAX_PATH];;
+			if (!helper_executable) {
+				helper_executable = DEFAULT_HELPER_EXE;
+			}
+			sprintf(cmdline, "%s %s", helper_executable, logger_name);
+			BOOL bRet = CreateProcessA(NULL, cmdline, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
+			if (!bRet) {
+				char *path = getenv("SCVL_Console");
+				if (path) {
+					sprintf(cmdline, "%s %s", path, logger_name);
+					bRet = CreateProcessA(NULL, cmdline, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
+				}
+				if (!bRet) {
+					MessageBoxA(NULL, "Helper executable not found", "ConsoleLogger failed", MB_OK);
+					CloseHandle(m_hPipe);
+					m_hPipe = INVALID_HANDLE_VALUE;
+					return -1;
+				}
+			}
+			BOOL bConnected = ConnectNamedPipe(m_hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+			if (!bConnected) {
+				MessageBoxA(NULL, "ConnectNamedPipe failed", "ConsoleLogger failed", MB_OK);
+				CloseHandle(m_hPipe);
+				m_hPipe = INVALID_HANDLE_VALUE;
+				return -1;
+			}
+			DWORD cbWritten;
+			char buffer[128];
+			if (!lpszWindowTitle)	lpszWindowTitle = m_name + 9;
+			sprintf(buffer, "TITLE: %s\r\n", lpszWindowTitle);
+			WriteFile(m_hPipe, buffer, (DWORD)strlen(buffer), &cbWritten, NULL);
+			if (cbWritten != strlen(buffer)) {
+				MessageBoxA(NULL, "WriteFile failed(1)", "ConsoleLogger failed", MB_OK);
+				DisconnectNamedPipe(m_hPipe);
+				CloseHandle(m_hPipe);
+				m_hPipe = INVALID_HANDLE_VALUE;
+				return -1;
+			}
+			if (buffer_size_x != -1 && buffer_size_y != -1) {
+				sprintf(buffer, "BUFFER-SIZE: %dx%d\r\n", buffer_size_x, buffer_size_y);
+				WriteFile(m_hPipe, buffer, (DWORD)strlen(buffer), &cbWritten, NULL);
+				if (cbWritten != strlen(buffer)) {
+					MessageBoxA(NULL, "WriteFile failed(2)", "ConsoleLogger failed", MB_OK);
+					DisconnectNamedPipe(m_hPipe);
+					CloseHandle(m_hPipe);
+					m_hPipe = INVALID_HANDLE_VALUE;
+					return -1;
+				}
+			}
+			if (AddHeaders()) {
+				DisconnectNamedPipe(m_hPipe);
+				CloseHandle(m_hPipe);
+				m_hPipe = INVALID_HANDLE_VALUE;
+				return -1;
+			}
+			buffer[0] = 0;
+			WriteFile(m_hPipe, buffer, 1, &cbWritten, NULL);
+			if (cbWritten != 1) {
+				MessageBoxA(NULL, "WriteFile failed(3)", "ConsoleLogger failed", MB_OK);
+				DisconnectNamedPipe(m_hPipe);
+				CloseHandle(m_hPipe);
+				m_hPipe = INVALID_HANDLE_VALUE;
+				return -1;
+			}
+			return 0;
+		}
+		long Close(void) {
+			if (m_hPipe == INVALID_HANDLE_VALUE || m_hPipe == NULL)
+				return -1;
+			else
+				return DisconnectNamedPipe(m_hPipe);
+		}
+		inline int print(const char *lpszText, int iSize = -1) {
+			if (m_hPipe == INVALID_HANDLE_VALUE)
+				return -1;
+			return _print(lpszText, (iSize == -1) ? (DWORD)strlen(lpszText) : iSize);
+		}
+		int printf(const char *format, ...) {
+			if (m_hPipe == INVALID_HANDLE_VALUE)
+				return -1;
+			int ret;
+			char tmp[1024];
+			va_list argList;
+			va_start(argList, format);
+#ifdef WIN32
+			ret = _vsnprintf(tmp, sizeof(tmp) - 1, format, argList);
+#else
+			ret = vsnprintf(tmp, sizeof(tmp) - 1, format, argList);
+#endif
+			tmp[ret] = 0;
+			va_end(argList);
+			return _print(tmp, ret);
+		}
+		int SetAsDefaultOutput(void) {
+			int hConHandle = _open_osfhandle((intptr_t)m_hPipe, _O_TEXT);
+			if (hConHandle == -1)
+				return -2;
+			FILE *fp = _fdopen(hConHandle, "w");
+			if (!fp)
+				return -3;
+			*stdout = *fp;
+			return setvbuf(stdout, NULL, _IONBF, 0);
+		}
+		static int ResetDefaultOutput(void) {
+			intptr_t lStdHandle = (intptr_t)GetStdHandle(STD_OUTPUT_HANDLE);
+			if (lStdHandle == (intptr_t)INVALID_HANDLE_VALUE)
+				return -1;
+			int hConHandle = _open_osfhandle(lStdHandle, _O_TEXT);
+			if (hConHandle == -1)
+				return -2;
+			FILE *fp = _fdopen(hConHandle, "w");
+			if (!fp)
+				return -3;
+			*stdout = *fp;
+			return setvbuf(stdout, NULL, _IONBF, 0);
+		}
+	protected:
+		char	m_name[64];
+		HANDLE	m_hPipe;
+		volatile long m_fast_critical_section;
+		inline void InitializeCriticalSection(void) {
+			m_fast_critical_section = 0;
+		}
+		inline void DeleteCriticalSection(void) {
+			m_fast_critical_section = 0;
+		}
+		inline void EnterCriticalSection(void) {
+			while (InterlockedCompareExchange(&m_fast_critical_section, 1, 0) != 0) Sleep(0);
+		}
+		inline void LeaveCriticalSection(void) {
+			m_fast_critical_section = 0;
+		}
+		virtual long	AddHeaders(void) {
+			return 0;
+		}
+		virtual int _print(const char *lpszText, int iSize) {
+			DWORD dwWritten = (DWORD)-1;
+			return (!SafeWriteFile(m_hPipe, lpszText, iSize, &dwWritten, NULL)
+				|| (int)dwWritten != iSize) ? -1 : (int)dwWritten;
+		}
+		inline BOOL SafeWriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped) {
+			EnterCriticalSection();
+			BOOL bRet = ::WriteFile(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
+			LeaveCriticalSection();
+			return bRet;
+		}
+	};
+	class CConsoleLoggerEx : public CConsoleLogger {
+		DWORD	m_dwCurrentAttributes;
+		enum enumCommands {
+			COMMAND_PRINT,
+			COMMAND_CPRINT,
+			COMMAND_CLEAR_SCREEN,
+			COMMAND_COLORED_CLEAR_SCREEN,
+			COMMAND_GOTOXY,
+			COMMAND_CLEAR_EOL,
+			COMMAND_COLORED_CLEAR_EOL
+		};
+	public:
+		CConsoleLoggerEx() {
+			m_dwCurrentAttributes = COLOR_WHITE | COLOR_BACKGROUND_BLACK;
+		}
+		enum enumColors {
+			COLOR_BLACK = 0,
+			COLOR_BLUE = FOREGROUND_BLUE,
+			COLOR_GREEN = FOREGROUND_GREEN,
+			COLOR_RED = FOREGROUND_RED,
+			COLOR_WHITE = COLOR_RED | COLOR_GREEN | COLOR_BLUE,
+			COLOR_INTENSITY = FOREGROUND_INTENSITY,
+			COLOR_BACKGROUND_BLACK = 0,
+			COLOR_BACKGROUND_BLUE = BACKGROUND_BLUE,
+			COLOR_BACKGROUND_GREEN = BACKGROUND_GREEN,
+			COLOR_BACKGROUND_RED = BACKGROUND_RED,
+			COLOR_BACKGROUND_WHITE = COLOR_BACKGROUND_RED | COLOR_BACKGROUND_GREEN | COLOR_BACKGROUND_BLUE,
+			COLOR_BACKGROUND_INTENSITY = BACKGROUND_INTENSITY,
+			COLOR_COMMON_LVB_LEADING_BYTE = COMMON_LVB_LEADING_BYTE,
+			COLOR_COMMON_LVB_TRAILING_BYTE = COMMON_LVB_TRAILING_BYTE,
+			COLOR_COMMON_LVB_GRID_HORIZONTAL = COMMON_LVB_GRID_HORIZONTAL,
+			COLOR_COMMON_LVB_GRID_LVERTICAL = COMMON_LVB_GRID_LVERTICAL,
+			COLOR_COMMON_LVB_GRID_RVERTICAL = COMMON_LVB_GRID_RVERTICAL,
+			COLOR_COMMON_LVB_REVERSE_VIDEO = COMMON_LVB_REVERSE_VIDEO,
+			COLOR_COMMON_LVB_UNDERSCORE = COMMON_LVB_UNDERSCORE
+		};
+		void cls(void) {
+			DWORD dwWritten = (DWORD)-1;
+			DWORD command = COMMAND_CLEAR_SCREEN << 24;
+			SafeWriteFile(m_hPipe, &command, sizeof(DWORD), &dwWritten, NULL);
+		}
+		DWORD background = 0;
+		void cls(DWORD color) {
+			background = color;
+			DWORD dwWritten = (DWORD)-1;
+			DWORD command = COMMAND_COLORED_CLEAR_SCREEN << 24;
+			EnterCriticalSection();
+			WriteFile(m_hPipe, &command, sizeof(DWORD), &dwWritten, NULL);
+			WriteFile(m_hPipe, &color, sizeof(DWORD), &dwWritten, NULL);
+			LeaveCriticalSection();
+		}
+		void clear_eol(void) {
+			DWORD dwWritten = (DWORD)-1;
+			DWORD command = COMMAND_CLEAR_EOL << 24;
+			SafeWriteFile(m_hPipe, &command, sizeof(DWORD), &dwWritten, NULL);
+		}
+		void clear_eol(DWORD color) {
+			DWORD dwWritten = (DWORD)-1;
+			DWORD command = COMMAND_COLORED_CLEAR_EOL << 24;
+			EnterCriticalSection();
+			WriteFile(m_hPipe, &command, sizeof(DWORD), &dwWritten, NULL);
+			WriteFile(m_hPipe, &color, sizeof(DWORD), &dwWritten, NULL);
+			LeaveCriticalSection();
+		}
+		int cprintf(int attributes, const char *format, ...) {
+			if (m_hPipe == INVALID_HANDLE_VALUE)
+				return -1;
+			int ret;
+			char tmp[1024];
+			va_list argList;
+			va_start(argList, format);
+#ifdef WIN32
+			ret = _vsnprintf(tmp, sizeof(tmp) - 1, format, argList);
+#else
+			ret = vsnprintf(tmp, sizeof(tmp) - 1, format, argList);
+#endif
+			tmp[ret] = 0;
+			va_end(argList);
+			return _cprint(attributes, tmp, ret);
+		}
+		int cprintf(const char *format, ...) {
+			if (m_hPipe == INVALID_HANDLE_VALUE)
+				return -1;
+			int ret;
+			char tmp[1024];
+			va_list argList;
+			va_start(argList, format);
+#ifdef WIN32
+			ret = _vsnprintf(tmp, sizeof(tmp) - 1, format, argList);
+#else
+			ret = vsnprintf(tmp, sizeof(tmp) - 1, format, argList);
+#endif
+			tmp[ret] = 0;
+			va_end(argList);
+			return _cprint(m_dwCurrentAttributes, tmp, ret);
+		}
+		void gotoxy(int x, int y) {
+			DWORD dwWritten = (DWORD)-1;
+			DWORD command = COMMAND_GOTOXY << 24;
+			EnterCriticalSection();
+			WriteFile(m_hPipe, &command, sizeof(DWORD), &dwWritten, NULL);
+			command = (x << 16) | y;
+			WriteFile(m_hPipe, &command, sizeof(DWORD), &dwWritten, NULL);
+			LeaveCriticalSection();
+		}
+		DWORD	GetCurrentColor(void) {
+			return m_dwCurrentAttributes;
+		}
+		void SetCurrentColor(DWORD dwColor) {
+			m_dwCurrentAttributes = dwColor;
+		}
+	protected:
+		virtual long	AddHeaders(void) {
+			DWORD cbWritten = 0;
+			char *ptr = "Extended-Console: TRUE\r\n";
+			WriteFile(m_hPipe, ptr, (DWORD)strlen(ptr), &cbWritten, NULL);
+			return (cbWritten == strlen(ptr)) ? 0 : -1;
+		}
+		virtual int _print(const char *lpszText, int iSize) {
+			DWORD dwWritten = (DWORD)-1;
+			DWORD command_plus_size = (COMMAND_PRINT << 24) | iSize;
+			EnterCriticalSection();
+			if (!WriteFile(m_hPipe, &command_plus_size, sizeof(DWORD), &dwWritten, NULL)
+				|| dwWritten != sizeof(DWORD)) {
+				LeaveCriticalSection();
+				return -1;
+			}
+			int iRet = (!WriteFile(m_hPipe, lpszText, iSize, &dwWritten, NULL)
+				|| (int)dwWritten != iSize) ? -1 : (int)dwWritten;
+			LeaveCriticalSection();
+			return iRet;
+		}
+		virtual int _cprint(int attributes, const char *lpszText, int iSize) {
+			DWORD dwWritten = (DWORD)-1;
+			DWORD command_plus_size = (COMMAND_CPRINT << 24) | iSize;
+			EnterCriticalSection();
+			if (!WriteFile(m_hPipe, &command_plus_size, sizeof(DWORD), &dwWritten, NULL)
+				|| dwWritten != sizeof(DWORD))
+			{
+				LeaveCriticalSection();
+				return -1;
+			}
+			command_plus_size = attributes;	// reuse of the prev variable
+			if (!WriteFile(m_hPipe, &command_plus_size, sizeof(DWORD), &dwWritten, NULL)
+				|| dwWritten != sizeof(DWORD))
+			{
+				LeaveCriticalSection();
+				return -1;
+			}
+			int iRet = (!WriteFile(m_hPipe, lpszText, iSize, &dwWritten, NULL)
+				|| (int)dwWritten != iSize) ? -1 : (int)dwWritten;
+			LeaveCriticalSection();
+			return iRet;
+		}
+	};
+}
+
+namespace scvl {
+	class IntervalTime;
+	class _Console {
+	public:
+		class cstream {
+		private:
+			enum cstream_Color {
+				COLOR_BLACK = 0,
+				COLOR_BLUE = FOREGROUND_BLUE,
+				COLOR_GREEN = FOREGROUND_GREEN,
+				COLOR_RED = FOREGROUND_RED,
+				COLOR_WHITE = COLOR_RED | COLOR_GREEN | COLOR_BLUE,
+			}m_console_color=cstream_Color::COLOR_WHITE;
+			cstream& operator<<(cstream_Color color) {
+				m_console_color = color;
+				return *this;
+			}
+		public:
+			cstream& operator<<(char val) {
+				std::ostringstream oss;
+				oss << val;
+				cclex.cprintf(m_console_color|cclex.background,oss.str().c_str());
+				m_console_color = cstream_Color::COLOR_WHITE;
+				return *this;
+			}
+			cstream& operator<<(int val) {
+				std::ostringstream oss;
+				oss << val;
+				cclex.cprintf(m_console_color | cclex.background, oss.str().c_str());
+				m_console_color = cstream_Color::COLOR_WHITE;
+				return *this;
+			}
+			cstream& operator<<(float val) {
+				std::ostringstream oss;
+				oss << val;
+				cclex.cprintf(m_console_color | cclex.background, oss.str().c_str());
+				m_console_color = cstream_Color::COLOR_WHITE;
+				return *this;
+			}
+			cstream& operator<<(double val) {
+				std::ostringstream oss;
+				oss << val;
+				cclex.cprintf(m_console_color | cclex.background, oss.str().c_str());
+				m_console_color = cstream_Color::COLOR_WHITE;
+				return *this;
+			}
+			cstream& operator<<(std::string val) {
+				cclex.cprintf(m_console_color | cclex.background, val.c_str());
+				m_console_color = cstream_Color::COLOR_WHITE;
+				return *this;
+			}
+		private:
+			scvl_3rdparty::CConsoleLoggerEx cclex;
+			cstream(std::string window) {
+				this->cclex.Create(window.c_str());
+			}
+			friend class _Console;
+			friend class IntervalTime;
+		};
+	private:
+		static std::string code;
+		static bool init;
+		static std::map<std::string, cstream> consoles;
+	private:
+		static void Destroy() {
+			for (auto& e : scvl::_Console::consoles) {
+				e.second.cclex.Close();
+			}
+			while (PathFileExistsA("SCVL_Console.exe") == TRUE) {
+				std::remove("SCVL_Console.exe");
+			}
+		}
+	private:
+		friend class IntervalTime;
+		void Create(std::string window, int color/*black,B,G,R,white*/) {
+			std::array<DWORD, 5> color_array = { 0,BACKGROUND_BLUE ,BACKGROUND_GREEN ,BACKGROUND_RED ,BACKGROUND_BLUE | BACKGROUND_GREEN | BACKGROUND_RED };
+			if (color >= 5) {
+				color = 0;
+			}
+			this->Init();
+			auto it = _Console::consoles.find(window);
+			if (it == _Console::consoles.end()) {
+				_Console::consoles.insert(std::make_pair(window, cstream(window)));
+			}
+			else {
+				SCVL_VERIFY(window + " is already exist!");
+			}
+			it = _Console::consoles.find(window);
+			it->second.cclex.cls(color_array[color]);
+		}
+		void Init() {
+			int version = 0;
+#if _MSC_VER==1600		//vs2010
+			version = 10;
+#elif _MSC_VER==1700	//vs2012
+			version = 11;
+#elif _MSC_VER==1800		//vs2013
+			version = 12;
+#elif _MSC_VER==1900		//vs2015
+			version = 14;
+#else
+#error We do not support current compiler!!
+#endif
+			//https://www.cyberciti.biz/faq/redirecting-stderr-to-stdout/
+			
+			std::ostringstream oss;
+			char c_temp_path[_MAX_PATH];
+			GetTempPathA(_MAX_PATH, c_temp_path);
+			std::string temp_path = c_temp_path;
+			if (PathFileExistsA(std::string(temp_path + "SCVL_Console.exe").c_str()) == TRUE) {
+				CopyFileA(std::string(temp_path + "SCVL_Console.exe").c_str(), "SCVL_Console.exe", false);
+				atexit(scvl::_Console::Destroy);
+			}
+			else {
+				oss << "\"C:/Program Files (x86)/Microsoft Visual Studio " << version << ".0/VC/vcvarsall.bat\" & cl 2>" << temp_path << "SCVL_Console2.txt >" << temp_path << "SCVL_Console0.txt " << temp_path << "SCVL_Console.cpp ";
+				std::fstream fout(temp_path + "SCVL_Console.cpp", std::ios::out);
+				if (fout.is_open() == true) {
+					fout << _Console::code;
+					fout.close();
+					char curr_dir[_MAX_PATH];
+					GetCurrentDirectoryA(_MAX_PATH, curr_dir);	//현재 실행파일의 경로를 저장합니다.
+					_chdir(temp_path.c_str());
+					system(oss.str().c_str());
+					_chdir(curr_dir);
+					CopyFileA(std::string(temp_path + "SCVL_Console.exe").c_str(), "SCVL_Console.exe", false);
+					atexit(scvl::_Console::Destroy);
+				}
+				else {
+					SCVL_VERIFY("file open fail!");
+				}
+			}
+		}
+	public:
+
+		void Create(std::string window) {
+			if (window.find(':') != std::string::npos) {
+				SCVL_VERIFY("char( : ) is not available!");
+			}
+			if (_Console::init == true) {
+				_Console::init = false;
+				this->Init();
+			}
+			auto it = _Console::consoles.find(window);
+			if (it == _Console::consoles.end()) {
+				_Console::consoles.insert(std::make_pair(window, cstream(window)));
+			}
+			else {
+				SCVL_VERIFY(window + " is already exist!");
+			}
+		}
+	private:
+
+	public:
+		cstream& operator<<(std::string window) {
+			auto it = _Console::consoles.find(window);
+			if (it != _Console::consoles.end()) {
+				return it->second;
+			}
+			else {
+				SCVL_VERIFY(window + " is not existing consolw window!");
+				return *new cstream("impossible");
+			}
+		}
+
+	};
+	__declspec(selectany) _Console Console;
+	__declspec(selectany) std::map<std::string, scvl::_Console::cstream> _Console::consoles;
+	__declspec(selectany) bool _Console::init = true;
+	__declspec(selectany) std::string _Console::code = "#pragma comment(lib,\"user32\")\n#pragma comment(lib,\"gdi32\")\n#pragma comment ( lib , \"ws2_32.lib\" )\n#pragma comment(lib,\"Advapi32\")\n#include \"stdio.h\"\n#include \"windows.h\"\nCONSOLE_SCREEN_BUFFER_INFO g_ConsoleBufferInfo;HANDLE	g_hPipe;BOOL	g_bExtendedConsole = FALSE;HANDLE	g_hConsole = INVALID_HANDLE_VALUE;DWORD	g_dwConsoleSize = 0;\nCOORD	g_dwConsoleCoords;long ConsoleLoop(void);long ConsoleExLoop(void);void cls(WORD color);void cls(void);void clear_eol(void);void clear_eol(WORD color);void gotoxy(int x, int y);int getxy(int *x, int *y);\nint getx(void);int gety(void);template <class T>T ReadPipe(T &v) {DWORD cbRead;if (!ReadFile(g_hPipe, &v, sizeof(T), &cbRead, NULL) || cbRead != sizeof(T)) {return 0;}return v;}WORD ReadWord(void) {WORD w;\nreturn ReadPipe(w);}DWORD ReadDword(void) {DWORD d;return ReadPipe(d);}BYTE ReadByte(void) {BYTE b;return ReadPipe(b);}long ConsoleLoop(void) {DWORD cbRead, cbWritten;char chBuf[1024];BOOL bSuccess;\nlong lResult = -1;do {bSuccess = ReadFile(g_hPipe,  chBuf, sizeof(chBuf),&cbRead,NULL); if (!bSuccess && GetLastError() != ERROR_MORE_DATA)break;if (!WriteFile(g_hConsole, chBuf, cbRead, &cbWritten, \nNULL)) {break;}} while (true); return lResult;}long ConsoleExLoop(void) {enum enumCommands {COMMAND_PRINT,COMMAND_CPRINT,COMMAND_CLEAR_SCREEN,COMMAND_COLORED_CLEAR_SCREEN,\nCOMMAND_GOTOXY,COMMAND_CLEAR_EOL,COMMAND_COLORED_CLEAR_EOL};DWORD cbRead, cbWritten;char chBuf[1024];BOOL bSuccess;long lResult = -1;DWORD dwCommand;bool loop = true;\nwhile (loop) {cbRead = 0;if (!ReadFile(g_hPipe, &dwCommand, sizeof(dwCommand), &cbRead, NULL) || cbRead != sizeof(dwCommand)) {loop = false;break;}char first_byte_of_command = (char)((DWORD)dwCommand >> 24);\nswitch (first_byte_of_command) {case COMMAND_PRINT:{int size = dwCommand & 0x00FFFFFF;while (size) {bSuccess = ReadFile(g_hPipe,chBuf,(size>sizeof(chBuf)) ? sizeof(chBuf) : size,&cbRead,  NULL);\nif (!bSuccess) {loop = false;break;}if (!WriteFile(g_hConsole, chBuf, cbRead, &cbWritten, NULL)) {loop = false;break;}size -= cbRead;}}break;case COMMAND_CPRINT:{DWORD attributes;ReadPipe(attributes);\nSetConsoleTextAttribute(g_hConsole, (WORD)attributes);int size = dwCommand & 0x00FFFFFF;while (size) {bSuccess = ReadFile(g_hPipe,   chBuf,   (size>sizeof(chBuf)) ? sizeof(chBuf) : size,&cbRead, NULL);\nif (!bSuccess) {loop = false;break;}if (!WriteFile(g_hConsole, chBuf, cbRead, &cbWritten, NULL)) {loop = false;break;}size -= cbRead;}}break;case COMMAND_CLEAR_SCREEN:cls();break;\ncase COMMAND_COLORED_CLEAR_SCREEN:{DWORD attributes;ReadPipe(attributes);cls((unsigned short)attributes);}break;case COMMAND_GOTOXY:{DWORD xy;ReadPipe(xy);gotoxy(xy >> 16, xy & 0x0000FFFF);}\nbreak;case COMMAND_CLEAR_EOL:{clear_eol();}break;case COMMAND_COLORED_CLEAR_EOL:{DWORD attributes;ReadPipe(attributes);clear_eol((unsigned short)attributes);}break;}}return lResult;}\nint main(int argc, char* argv[]) {if (argc == 1 || !argv[1] || !argv[1][0]) {MessageBoxA(NULL, \"\\nFailed to start logger\\n\", \"FAILED\", MB_OK);return -1;}char szPipename[64];\nsprintf(szPipename, \"\\\\\\\\.\\\\pipe\\\\%s\", argv[1]);while (1) {g_hPipe = CreateFileA(szPipename,GENERIC_READ,0,NULL,OPEN_EXISTING,0,NULL); if (g_hPipe != INVALID_HANDLE_VALUE)break;\nif (GetLastError() != ERROR_PIPE_BUSY) {MessageBoxA(NULL, \"Could not open pipe(1)\", \"FAILED\", MB_OK);getchar();return 0;}printf(\"Wait for pipe...\");if (!WaitNamedPipeA(szPipename, 20000)) \n{MessageBoxA(NULL, \"Could not open pipe(2)\", \"FAILED\", MB_OK);getchar();return 0;}Sleep(500);}BOOL bSuccess;DWORD cbRead;{char *p1, *p2;char header[1024];int len = 0;char c = 1;header[sizeof(header) - 1] = 0;\ndo {bSuccess = ReadFile(g_hPipe,&c,  1,&cbRead,NULL);   if (!bSuccess && GetLastError() != ERROR_MORE_DATA) {MessageBoxA(NULL, \"ReadFile failed\", \"FAILED\", MB_OK);return -1;}header[len++] = c;} \nwhile (c && len <= sizeof(header) - 1);header[len] = 0;{p1 = strstr(header, \"TITLE:\");if (p1) {p1 += 6;while (*p1 == \' \' || *p1 == \'\\t\')p1++;}p2 = p1;while (*p2 && *p2 != \'\\r\' && *p2 != \'\\n\')p2++;c = *p2;\n*p2 = 0;SetConsoleTitleA(p1);*p2 = c;}{COORD coord;coord.X = coord.Y = 0;p1 = strstr(header, \"BUFFER-SIZE:\");if (p1) {p1 += 12;while (*p1 == \' \' || *p1 == \'\\t\')p1++;p2 = p1;\nwhile (*p2 && *p2 != \',\' && *p2 != \'x\')p2++;c = *p2;*p2 = 0;coord.X = (SHORT)atoi(p1);*p2 = c;p1 = p2 + 1;while (*p2 && *p2 != \'\\r\' && *p2 != \'\\n\')p2++;c = *p2;*p2 = 0;coord.Y = (SHORT)atoi(p1);\n*p2 = c;if (coord.X && coord.Y)SetConsoleScreenBufferSize(GetStdHandle(STD_OUTPUT_HANDLE), coord);}}{if (strstr(header, \"Extended-Console: TRUE\"))g_bExtendedConsole = TRUE;}}\ng_hConsole = GetStdHandle(STD_OUTPUT_HANDLE);if (!GetConsoleScreenBufferInfo(g_hConsole, &g_ConsoleBufferInfo)) {MessageBoxA(NULL, \"GetConsoleScreenBufferInfo failed\", \"FAILURE\", MB_OK);\nreturn -3;}g_dwConsoleCoords = g_ConsoleBufferInfo.dwSize;g_dwConsoleSize = g_ConsoleBufferInfo.dwSize.X * g_ConsoleBufferInfo.dwSize.Y;if (g_bExtendedConsole)ConsoleExLoop();else ConsoleLoop();\nCloseHandle(g_hPipe);return 0;}void cls(WORD color) {static COORD coordScreen = { 0, 0 }; DWORD cCharsWritten;CONSOLE_SCREEN_BUFFER_INFO csbi; SetConsoleTextAttribute(g_hConsole, color);\nFillConsoleOutputCharacter(g_hConsole, (TCHAR) \' \', g_dwConsoleSize, coordScreen, &cCharsWritten);GetConsoleScreenBufferInfo(g_hConsole, &csbi);\nFillConsoleOutputAttribute(g_hConsole, csbi.wAttributes, g_dwConsoleSize, coordScreen, &cCharsWritten);SetConsoleCursorPosition(g_hConsole, coordScreen);}void cls(void) {static COORD coordScreen = { 0, 0 };\nDWORD cCharsWritten;CONSOLE_SCREEN_BUFFER_INFO csbi;SetConsoleTextAttribute(g_hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);\nFillConsoleOutputCharacter(g_hConsole, (TCHAR) \' \', g_dwConsoleSize, coordScreen, &cCharsWritten);GetConsoleScreenBufferInfo(g_hConsole, &csbi);\nFillConsoleOutputAttribute(g_hConsole, csbi.wAttributes, g_dwConsoleSize, coordScreen, &cCharsWritten);SetConsoleCursorPosition(g_hConsole, coordScreen);}void gotoxy(int x, int y) {\nCOORD coordScreen = { (SHORT)x, (SHORT)y };SetConsoleCursorPosition(g_hConsole, coordScreen);}int getxy(int *x, int *y) {CONSOLE_SCREEN_BUFFER_INFO csbi;\nif (!GetConsoleScreenBufferInfo(g_hConsole, &csbi))return -1;if (x)*x = csbi.dwCursorPosition.X;if (y)*y = csbi.dwCursorPosition.Y;return 0;}int getxy(COORD &coord) {CONSOLE_SCREEN_BUFFER_INFO csbi;\nif (!GetConsoleScreenBufferInfo(g_hConsole, &csbi))return -1;coord = csbi.dwCursorPosition;return 0;}int getx(void) {CONSOLE_SCREEN_BUFFER_INFO csbi;if (!GetConsoleScreenBufferInfo(g_hConsole, &csbi))\nreturn -1;return  csbi.dwCursorPosition.X;}int gety(void) {CONSOLE_SCREEN_BUFFER_INFO csbi;if (!GetConsoleScreenBufferInfo(g_hConsole, &csbi))return -1;return  csbi.dwCursorPosition.Y;}\nvoid clear_eol(void) {DWORD dummy;COORD xy;getxy(xy);int size_to_fill = g_dwConsoleCoords.X - xy.X;FillConsoleOutputCharacter(g_hConsole, (TCHAR) \' \', size_to_fill, xy, &dummy);\nFillConsoleOutputAttribute(g_hConsole,FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE,size_to_fill, xy, &dummy);}void clear_eol(WORD color) {DWORD dummy;COORD xy;getxy(xy);\nint size_to_fill = g_dwConsoleCoords.X - xy.X;FillConsoleOutputCharacter(g_hConsole, (TCHAR) \' \', size_to_fill, xy, &dummy);FillConsoleOutputAttribute(g_hConsole,color,size_to_fill, xy, &dummy);}\n\n\n";
+}
+
+//https://stackoverflow.com/questions/10015897/cannot-have-typeofstdendl-as-template-parameter
+template<class e, class t, class a> //string version
+auto get_endl(const std::basic_string<e, t, a>&)
+-> decltype(&std::endl<e, t>)
+{
+	return std::endl<e, t>;
+}
+
+template<class e, class t> //stream version
+auto get_endl(const std::basic_ostream<e, t>&)-> decltype(&std::endl<e, t>)
+{
+	return std::endl<e, t>;
+}
+inline scvl::_Console::cstream& operator<<(scvl::_Console::cstream& con, decltype(std::endl<char, std::char_traits<char>>) endl) {
+	con << "\n";
+	return con;
+}
+//	@reference
+//https://www.codeproject.com/Articles/13368/Multiple-consoles-for-a-single-application
+#endif

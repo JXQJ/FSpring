@@ -1,0 +1,18 @@
+/*
+*  All
+*  Sogang Computer Vison Library
+*
+*  Created by Kimbom on 2017. 05. 30...
+*  Copyright 2017 Sogang CVIP lab. All rights reserved.
+*
+*/
+#if !defined(SOGANG_COMPUTER_VISION_LIBRARY_7E1_05_1E_ALL_H_INCLUDED)
+#define SOGANG_COMPUTER_VISION_LIBRARY_7E1_05_1E_ALL_H_INCLUDED
+#include "Console"
+#include "File"
+#include "Image"
+#include "Time"
+#include"Unzip"
+#include"Verify"
+#include"Zip"
+#endif
