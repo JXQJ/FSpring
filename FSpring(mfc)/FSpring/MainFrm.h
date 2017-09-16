@@ -5,20 +5,88 @@
 //
 
 #pragma once
-#include "ChildView.h"
-#include"BMDLFrame.h"
-#include"BMDLMenuFrame.h"
-#include"VirtualView.h"
-#include"ListView.h"
+
 #include<direct.h>
 #include<atomic>
-#include<SCVL/All>
+
 #include<opencv2/opencv.hpp>
+#include"MSpring/Frame/MSpringFrame.h"
+#include"MSpring/Frame/MSpringMenuFrame.h"
+#include"MSpring/view/MSpringView.h"
+#include"MSpring/view/VirtualView.h"
+#include"MSpring/MSpring.h"
+#include"VideoListView.h"
+#include"repository.h"
 extern "C" {
 #include <libavformat/avformat.h>
 }
+#ifdef _OPENMP
+#include<omp.h>
+#endif
+class ProgressExpansion :public MSpringFrameExpansion {
+public:
+	ProgressExpansion(CWnd* wnd) :MSpringFrameExpansion(wnd) {
+	}
+	virtual void OnCreate(LPCREATESTRUCT lpCreateStruct) {
+	}
+	virtual int OnNcPaint(CDC* pDC, CRect rect) {
+		//쓴만큼 돌려줘야함.
+		int W = 300;
+		if (g_status == Status::RUN) {
+			rect.right = rect.left + W;
+			rect.top += 5;
+			rect.bottom -= 5;
+			CPen null_pen;
+			null_pen.CreatePen(PS_NULL, 0, RGB(0, 0, 0));
+			CPen* old_pen = pDC->SelectObject(&null_pen);
+			CBrush probk_brush;
+			probk_brush.CreateSolidBrush(RGB(88, 110, 117));
+			CBrush* old_brush = pDC->SelectObject(&probk_brush);
+			pDC->RoundRect(rect, CPoint(7,7));
+			pDC->SelectObject(old_brush);
+			CBrush proth_brush;
+			proth_brush.CreateSolidBrush(RGB(38, 139, 210));
+			old_brush = pDC->SelectObject(&proth_brush);
+			CRect thumb_rect = rect;
+			if (g_progress != 0) {
+				thumb_rect.right = static_cast<LONG>(thumb_rect.left + rect.Width()*((float)g_progress / g_total_frame_count));
+			} else {
+				thumb_rect.right = thumb_rect.left;
+			}
+			pDC->RoundRect(thumb_rect, CPoint(7,7));
+			pDC->SelectObject(old_brush);
+			CFont font;
+			int h = mspring::Font::GetRealFontHeight(g_font_str, rect.Height(), pDC);
+			font.CreatePointFont(h, g_font_str);
+			CFont* old_font = pDC->SelectObject(&font);
+			CString progress_str;
+			progress_str.Format(TEXT("extract frames ... (%d/%d)"), g_progress, g_total_frame_count);
+			pDC->TextOutW(rect.right, rect.top, progress_str);
+			font.DeleteObject();
+		}
+		return W;
+	}
+	virtual void OnSize(UINT nType, int cx, int cy) {
 
-class CMainFrame : public BMDLFrame {
+	}
+	virtual bool OnNcLButtonDown(UINT nHitTest, CPoint point) {
+		return false;
+	}
+	virtual bool OnNcMouseMove(UINT nHitTest, CPoint point) {
+		return false;
+	}
+	virtual bool OnNcLButtonUp(UINT nHitTest, CPoint point) {
+		return false;
+	}
+	virtual bool OnNcLButtonDblClk(UINT nHitTest, CPoint point) {
+		return false;
+	}
+	virtual void OnNcMouseLeave() {
+	}
+	virtual void OnDestroy() {
+	}
+};
+class CMainFrame : public MSpringFrame {
 
 public:
 	CMainFrame();
@@ -43,8 +111,9 @@ public:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
-	BMDLMenuFrame* m_menu_frame = nullptr;
-	CChildView    m_wndView;
+	//ProgressExpansion* m_progress_frame = nullptr;
+	MSpringMenuFrame* m_menu_frame = nullptr;
+	MSpringView    m_wndView;
 
 	// 생성된 메시지 맵 함수
 protected:

@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="BMDL">
-      <UniqueIdentifier>{4e7e59c3-9f53-44ab-b549-d9c5ef9bdcab}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -33,26 +30,14 @@
     <ClInclude Include="MainFrm.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="ChildView.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="Resource.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="bmdl.h">
-      <Filter>BMDL</Filter>
+    <ClInclude Include="VideoListView.h">
+      <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="BMDLFrame.h">
-      <Filter>BMDL</Filter>
-    </ClInclude>
-    <ClInclude Include="BMDLMenuFrame.h">
-      <Filter>BMDL</Filter>
-    </ClInclude>
-    <ClInclude Include="ListView.h">
-      <Filter>BMDL</Filter>
-    </ClInclude>
-    <ClInclude Include="VirtualView.h">
-      <Filter>BMDL</Filter>
+    <ClInclude Include="repository.h">
+      <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -65,20 +50,8 @@
     <ClCompile Include="MainFrm.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="ChildView.cpp">
+    <ClCompile Include="VideoListView.cpp">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="BMDLFrame.cpp">
-      <Filter>BMDL</Filter>
-    </ClCompile>
-    <ClCompile Include="BMDLMenuFrame.cpp">
-      <Filter>BMDL</Filter>
-    </ClCompile>
-    <ClCompile Include="ListView.cpp">
-      <Filter>BMDL</Filter>
-    </ClCompile>
-    <ClCompile Include="VirtualView.cpp">
-      <Filter>BMDL</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -98,6 +71,12 @@
     <Image Include="res\bitmap1.bmp">
       <Filter>리소스 파일</Filter>
     </Image>
+    <Image Include="res\fspring.bmp">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\BLOGO.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
     <Image Include="res\close.bmp">
       <Filter>리소스 파일</Filter>
     </Image>
@@ -105,12 +84,6 @@
       <Filter>리소스 파일</Filter>
     </Image>
     <Image Include="res\minimize.bmp">
-      <Filter>리소스 파일</Filter>
-    </Image>
-    <Image Include="res\fspring.bmp">
-      <Filter>리소스 파일</Filter>
-    </Image>
-    <Image Include="res\BLOGO.ico">
       <Filter>리소스 파일</Filter>
     </Image>
   </ItemGroup>

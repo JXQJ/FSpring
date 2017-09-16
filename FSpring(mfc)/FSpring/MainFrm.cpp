@@ -1,5 +1,4 @@
-﻿
-// MainFrm.cpp : CMainFrame 클래스의 구현
+﻿// MainFrm.cpp : CMainFrame 클래스의 구현
 //
 
 #include "stdafx.h"
@@ -12,6 +11,31 @@
 #endif
 
 // CMainFrame
+BOOL PathFolderExistsA(const char* dir) {
+	DWORD ftyp = GetFileAttributesA(dir);
+	return (ftyp&FILE_ATTRIBUTE_DIRECTORY);
+}
+bool DeleteDirectory(std::string dir_path, bool noRecycleBin = true) {
+	char *pszFrom = new char[dir_path.length() + 2];
+	strcpy_s(pszFrom, dir_path.length() + 2, dir_path.c_str());
+	pszFrom[dir_path.length()] = '\0';       // double-null termination
+	pszFrom[dir_path.length() + 1] = '\0';   // double-null termination
+	SHFILEOPSTRUCTA	FileOp;
+	FileOp.hwnd = NULL;
+	FileOp.wFunc = FO_DELETE;
+	FileOp.pFrom = pszFrom;
+	FileOp.pTo = NULL;
+	FileOp.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
+	if (noRecycleBin == false) {
+		FileOp.fFlags |= FOF_ALLOWUNDO;
+	}
+	FileOp.fAnyOperationsAborted = FALSE;
+	FileOp.lpszProgressTitle = NULL;
+	FileOp.hNameMappings = NULL;
+	int ret = SHFileOperationA(&FileOp);
+	delete[] pszFrom;
+	return (ret == 0);
+}
 void GetVideoInfo(std::string video_file, int64_t* pframe_count = nullptr, int64_t* pduration_msec = nullptr, double* pfps = nullptr) {
 	bool ret = true;
 	av_register_all();
@@ -19,8 +43,8 @@ void GetVideoInfo(std::string video_file, int64_t* pframe_count = nullptr, int64
 	avformat_open_input(&pFormatCtx, video_file.c_str(), NULL, NULL);
 	avformat_find_stream_info(pFormatCtx, NULL);
 	int videoStream = -1;	//Find video Stream
-	for (int i = 0; i < pFormatCtx->nb_streams; i++) {
-		if (pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+	for (unsigned int i = 0; i < pFormatCtx->nb_streams; i++) {
+		if (pFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
 			videoStream = i;
 			break;
 		}
@@ -35,10 +59,10 @@ void GetVideoInfo(std::string video_file, int64_t* pframe_count = nullptr, int64
 			if (packet.stream_index == videoStream) {
 				frame_count++;
 			}
-			av_free_packet(&packet);
+			av_packet_unref(&packet);
 		}
 	}
-	int64_t duration_msec = pFormatCtx->duration*1000.0 / AV_TIME_BASE;
+	int64_t duration_msec = static_cast<int64_t>(pFormatCtx->duration*1000.0 / AV_TIME_BASE);
 	double fps = frame_count * 1000.0 / duration_msec;
 	if (frame_count) {
 		*pframe_count = frame_count;
@@ -52,9 +76,9 @@ void GetVideoInfo(std::string video_file, int64_t* pframe_count = nullptr, int64
 	avformat_close_input(&pFormatCtx);
 	avformat_free_context(pFormatCtx);
 }
-IMPLEMENT_DYNAMIC(CMainFrame, BMDLFrame)
+IMPLEMENT_DYNAMIC(CMainFrame, MSpringFrame)
 
-BEGIN_MESSAGE_MAP(CMainFrame, BMDLFrame)
+BEGIN_MESSAGE_MAP(CMainFrame, MSpringFrame)
 	ON_WM_CREATE()
 	ON_WM_SETFOCUS()
 	ON_COMMAND(ID_FILE_ADDVIDEO, &CMainFrame::OnFileOpenvideo)
@@ -75,7 +99,7 @@ CMainFrame::~CMainFrame() {
 }
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
-	if (BMDLFrame::OnCreate(lpCreateStruct) == -1)
+	if (MSpringFrame::OnCreate(lpCreateStruct) == -1)
 		return -1;
 
 	// 프레임의 클라이언트 영역을 차지하는 뷰를 만듭니다.
@@ -85,32 +109,26 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 		return -1;
 	}
 
-	this->AddSysBtn(IDB_FRAME_CLOSE, BMDLFrame::ButtonEvent_Close);
-	this->AddSysBtn(IDB_FRAME_MAXIMIZE, BMDLFrame::ButtonEvent_MaximizeWindow);
-	this->AddSysBtn(IDB_FRAME_MINIMIZE, BMDLFrame::ButtonEvent_MinimizeWindow);
+	this->AddSysBtn(IDB_FRAME_CLOSE, MSpringFrame::ButtonEvent_Close);
+	this->AddSysBtn(IDB_FRAME_MAXIMIZE, MSpringFrame::ButtonEvent_MaximizeWindow);
+	this->AddSysBtn(IDB_FRAME_MINIMIZE, MSpringFrame::ButtonEvent_MinimizeWindow);
 	this->SetIcon(IDR_MAINFRAME);
-	CString font = TEXT("Arial");
-	COLORREF color_bk = RGB(253, 246, 227);
-	COLORREF color_hover = RGB(38, 139, 210);
-	COLORREF color_text = RGB(7, 54, 66);
-	COLORREF color_border = RGB(108, 113, 196);
 
 
-	this->SetStyle(color_bk, color_border);
-	VirtualView::Colors::m_color_bk = color_bk;
-	VirtualView::Colors::m_color_hover = color_hover;
-	VirtualView::Colors::m_color_text = color_text;
-	VirtualView::Colors::m_color_border = color_border;
-	VirtualView::Colors::m_color_thumb = RGB(38, 139, 210);
+	this->SetTitle(TEXT("FSpring"));
+	this->SetStyle(g_font_str,g_color_bk,g_color_text, g_color_border);
 
-	m_menu_frame = new BMDLMenuFrame(this);
-	m_menu_frame->SetStyle(font, color_bk, color_text, color_hover, color_bk);
+	m_menu_frame = new MSpringMenuFrame(this);
+	m_menu_frame->SetStyle(g_font_str, g_color_bk, g_color_text, g_color_hover, g_color_bk);
 	m_menu_frame->SetMenu(IDR_MAINFRAME);
 	m_menu_frame->SetPosition(0);
 	this->AddExpansionClass(m_menu_frame);
 
+	//m_progress_frame = new ProgressExpansion(this);
+	//this->AddExpansionClass(m_progress_frame);
 
-	m_wndView.m_view = new ListView(&m_wndView);
+	m_wndView.SetStyle(g_color_bk);
+	m_wndView.m_view = new VideoListView(&m_wndView);
 	this->SetWindowPos(nullptr, 100, 0, 1200, 600, SWP_NOMOVE);
 #ifdef _DEBUG
 	if (::AllocConsole() == TRUE) {
@@ -121,11 +139,12 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 		std::ios::sync_with_stdio();
 	}
 #endif
+	g_status = Status::INIT;
 	return 0;
 }
 
 BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs) {
-	if (!BMDLFrame::PreCreateWindow(cs))
+	if (!MSpringFrame::PreCreateWindow(cs))
 		return FALSE;
 	// TODO: CREATESTRUCT cs를 수정하여 여기에서
 	//  Window 클래스 또는 스타일을 수정합니다.
@@ -139,11 +158,11 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs) {
 
 #ifdef _DEBUG
 void CMainFrame::AssertValid() const {
-	BMDLFrame::AssertValid();
+	MSpringFrame::AssertValid();
 }
 
 void CMainFrame::Dump(CDumpContext& dc) const {
-	BMDLFrame::Dump(dc);
+	MSpringFrame::Dump(dc);
 }
 #endif //_DEBUG
 
@@ -161,17 +180,17 @@ BOOL CMainFrame::OnCmdMsg(UINT nID, int nCode, void* pExtra, AFX_CMDHANDLERINFO*
 		return TRUE;
 
 	// 그렇지 않으면 기본 처리합니다.
-	return BMDLFrame::OnCmdMsg(nID, nCode, pExtra, pHandlerInfo);
+	return MSpringFrame::OnCmdMsg(nID, nCode, pExtra, pHandlerInfo);
 }
 
 
 
 void CMainFrame::OnFileOpenvideo() {
-	if (VirtualView::Status::m_estatus == VirtualView::Status::EStatus::RUN) {
+	if (g_status == Status::RUN) {
 		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
 		return;
 	}
-	std::vector<CString>& files = VirtualView::Element::m_files;
+	std::vector<CString>& files = g_files;
 	const TCHAR* IMAGE_FILTER = TEXT("Video File(*.avi;*.mp4;*.mkv;*.mov)|*.avi;*.mp4;*.mkv;*.mov|AVI File(*.avi)|*.avi|MP4 File(*.mp4)|*.mp4|MKV File(*.mkv)|*.mkv|MOV File(*.mov)|*.mov|");
 	CFileDialog dlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT, IMAGE_FILTER);
 	CString strFileList;
@@ -191,50 +210,64 @@ void CMainFrame::OnFileOpenvideo() {
 			}
 		}
 		if (files.size() > 0) {
-			VirtualView::Status::m_estatus = VirtualView::Status::EStatus::WAIT;
+			g_status = Status::WAIT;
 		}
 		this->Invalidate();
 	}
 }
 void CMainFrame::OnFileClear() {
-	if (VirtualView::Status::m_estatus == VirtualView::Status::EStatus::RUN) {
+	if (g_status == Status::RUN) {
 		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
 		return;
 	}
-	std::vector<CString>& files = VirtualView::Element::m_files;
+	std::vector<CString>& files = g_files;
 	files.clear();
-	VirtualView::Status::m_estatus = VirtualView::Status::EStatus::INIT;
+	g_status = Status::INIT;
 	this->Invalidate();
 }
 
 UINT Run(LPVOID param) {
 	try {
-		VirtualView::Status::m_estatus = VirtualView::Status::EStatus::RUN;
+		g_progress.store(0);
+		g_files_progress.assign(g_files.size(), std::pair<int, int>(0, 0));
+		g_status = Status::RUN;
 		void** params = (void**)param;
 		CMainFrame* wnd = dynamic_cast<CMainFrame*>((CWnd*)params[0]);
 		char* extension = (char*)params[1];
 		//Prepare
-		VirtualView::Status::m_total_frame_count = 0;
-		VirtualView::Status::m_prepare.store(false);
-		std::vector<CString>& files = VirtualView::Element::m_files;
+		g_total_frame_count = 0;
+		g_prepare.store(false);
+		std::vector<CString>& files = g_files;
 		wnd->m_wndView.Invalidate();
-		for (auto&cfile : files) {
+		for (int i = 0; i<files.size(); i++) {
+			CString cfile = files[i];
 			int64_t frame_count;
-			std::string file = CT2CA((LPCWSTR)cfile);
+			std::string file = mspring::String::ToString(cfile);
 			GetVideoInfo(file, &frame_count);
-			VirtualView::Status::m_total_frame_count += frame_count;
+			g_files_progress[i].second = frame_count;
+			g_total_frame_count += frame_count;
 		}
-		VirtualView::Status::m_prepare.store(true);
+		g_prepare.store(true);
 		//Run
 		wnd->m_wndView.Invalidate();
-		VirtualView::Status::m_progress.store(0);
-		for (auto&cfile : files) {
+		for (int i = 0; i < files.size(); i++) {
+			CString cfile = files[i];
 			std::string file = CT2CA((LPCWSTR)cfile);
 			std::string folder = file.substr(0, file.find_last_of(".")) + ".frames";
-			scvl::File::DeleteDirectory(folder);
-			Sleep(100);
-			_mkdir(folder.c_str());
-			//CreateDirectoryA(folder.c_str(), nullptr);
+			DeleteDirectory(folder, true);
+		}
+#pragma omp parallel for schedule(dynamic)
+		for (int i=0;i<files.size();i++) {
+			CString cfile = files[i];
+			std::string file = CT2CA((LPCWSTR)cfile);
+			std::string folder = file.substr(0, file.find_last_of(".")) + ".frames";
+			DeleteDirectory(folder,true);
+			do {
+				//_mkdir(folder.c_str());
+				CreateDirectoryA(folder.c_str(), 0);
+				
+				Sleep(1);
+			} while (PathFolderExistsA(folder.c_str())==FALSE);
 			cv::VideoCapture vc(file);
 			if (vc.isOpened() == false) {
 				continue;
@@ -242,29 +275,25 @@ UINT Run(LPVOID param) {
 			cv::Mat frame;
 			int n = 0;
 			std::ostringstream oss;
-			while (true) {
-				vc >> frame;
-				if (frame.empty() == true) {
-					break;
-				}
+			while (vc.read(frame)==true) {
 				oss.str("");
 				oss.width(8);
 				oss.fill('0');
 				oss << n;
 				n++;
 				std::string dst = folder + "\\" + oss.str() + "." + extension;
-				//cv::imwrite(dst, frame);	//imwrite has unknown error in windows7
+				cv::imwrite(dst, frame);	//imwrite has unknown error in windows7
 
-				IplImage*iplimage = &IplImage(frame);
-				cvSaveImage(dst.c_str(), iplimage);
-				
-
-				VirtualView::Status::m_progress++;
+				//IplImage*iplimage = &IplImage(frame);
+				//cvSaveImage(dst.c_str(), iplimage);
+				g_files_progress[i].first++;
+				g_progress++;
 				wnd->m_wndView.Invalidate();
+				//wnd->SendMessage(WM_NCPAINT);
 			}
 
 		}
-		VirtualView::Status::m_estatus = VirtualView::Status::EStatus::WAIT;
+		g_status = Status::WAIT;
 		wnd->m_wndView.Invalidate();
 		wnd->MessageBox(TEXT("Complete!!"), TEXT("message"), MB_OK);
 	} catch (std::exception& e) {
@@ -275,11 +304,11 @@ UINT Run(LPVOID param) {
 	return 0;
 }
 void CMainFrame::OnExtractAsJPG() {
-	if (VirtualView::Status::m_estatus == VirtualView::Status::EStatus::INIT) {
+	if (g_status == Status::INIT) {
 		this->MessageBox(TEXT("No videos"), TEXT("warning"), MB_OK);
 		return;
 	}
-	if (VirtualView::Status::m_estatus == VirtualView::Status::EStatus::RUN) {
+	if (g_status == Status::RUN) {
 		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
 		return;
 	}
@@ -287,17 +316,15 @@ void CMainFrame::OnExtractAsJPG() {
 #ifdef _DEBUG
 	Run(params);
 #else
-	
 	::AfxBeginThread(Run, (void*)params);
-	
 #endif
 }
 void CMainFrame::OnExtractAsPng() {
-	if (VirtualView::Status::m_estatus == VirtualView::Status::EStatus::RUN) {
+	if (g_status == Status::RUN) {
 		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
 		return;
 	}
-	if (VirtualView::Status::m_estatus == VirtualView::Status::EStatus::INIT) {
+	if (g_status == Status::INIT) {
 		this->MessageBox(TEXT("No videos"), TEXT("warning"), MB_OK);
 		return;
 	}
@@ -306,28 +333,19 @@ void CMainFrame::OnExtractAsPng() {
 	Run(params);
 #else
 	::AfxBeginThread(Run, (void*)params);
-	
 #endif
 }
 
 void CMainFrame::OnGetMinMaxInfo(MINMAXINFO* lpMMI) {
-	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
 	lpMMI->ptMinTrackSize.x = 600;
 	lpMMI->ptMinTrackSize.y = 300;
-	BMDLFrame::OnGetMinMaxInfo(lpMMI);
+	MSpringFrame::OnGetMinMaxInfo(lpMMI);
 }
 
 
-
-
-
-
-
-
 void CMainFrame::OnDestroy() {
-	BMDLFrame::OnDestroy();
+	MSpringFrame::OnDestroy();
 #ifdef _DEBUG
 	FreeConsole();
 #endif
-	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
 }

@@ -84,7 +84,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)FSpring(win64)</OutDir>
+    <OutDir>$(SolutionDir)FSpring(win64)/</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -119,8 +119,8 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>$(SolutionDir)3rdparty/lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opencv_world320d.lib;avcodec.lib;avformat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)3rdparty/lib/x64/;$(SolutionDir)3rdparty/lib/x64/Debug/</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opencv_world330d.lib;avcodec.lib;avformat.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -133,8 +133,8 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(SolutionDir)3rdparty\bin\*.dll" "$(TargetDir)"
-xcopy /Y "$(SolutionDir)3rdparty\bin\debug\*.dll" "$(TargetDir)"</Command>
+      <Command>xcopy /Y "$(SolutionDir)3rdparty\bin\x64\*.dll" "$(TargetDir)"
+xcopy /Y "$(SolutionDir)3rdparty\bin\x64\Debug\*.dll" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -173,13 +173,14 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\debug\*.dll" "$(TargetDir)"</Command>
       <PreprocessorDefinitions>_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)3rdparty/lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opencv_world320.lib;avcodec.lib;avformat.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)3rdparty\lib\x64;$(SolutionDir)3rdparty\lib\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opencv_world330.lib;avcodec.lib;avformat.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -192,31 +193,24 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\debug\*.dll" "$(TargetDir)"</Command>
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(SolutionDir)3rdparty\bin\*.dll" "$(TargetDir)"</Command>
+      <Command>xcopy /Y "$(SolutionDir)3rdparty\bin\x64\*.dll" "$(TargetDir)"
+xcopy /Y "$(SolutionDir)3rdparty\bin\x64\Release\*.dll" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bmdl.h" />
-    <ClInclude Include="BMDLFrame.h" />
-    <ClInclude Include="BMDLMenuFrame.h" />
-    <ClInclude Include="ChildView.h" />
     <ClInclude Include="FSpring.h" />
-    <ClInclude Include="ListView.h" />
     <ClInclude Include="MainFrm.h" />
+    <ClInclude Include="repository.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="VirtualView.h" />
+    <ClInclude Include="VideoListView.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="BMDLFrame.cpp" />
-    <ClCompile Include="BMDLMenuFrame.cpp" />
-    <ClCompile Include="ChildView.cpp" />
     <ClCompile Include="FSpring.cpp" />
-    <ClCompile Include="ListView.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -224,7 +218,7 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\debug\*.dll" "$(TargetDir)"</Command>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="VirtualView.cpp" />
+    <ClCompile Include="VideoListView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FSpring.rc" />
