@@ -51,7 +51,7 @@ void GetVideoInfo(std::string video_file, int64_t* pframe_count = nullptr, int64
 	}
 	int64_t frame_count = pFormatCtx->streams[videoStream]->nb_frames;
 
-	if (frame_count <= 0 || frame_count>INT_MAX) {
+	if (frame_count <= 0 || frame_count > INT_MAX) {
 		//frame_count is incorrect
 		frame_count = 0;
 		AVPacket packet;
@@ -115,8 +115,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	this->SetIcon(IDR_MAINFRAME);
 
 
-	this->SetTitle(TEXT("FSpring"));
-	this->SetStyle(g_font_str,g_color_bk,g_color_text, g_color_border);
+	this->SetTitle(TEXT("FSpring 1.1"));
+	this->SetStyle(g_font_str, g_color_bk, g_color_text, g_color_border);
 
 	m_menu_frame = new MSpringMenuFrame(this);
 	m_menu_frame->SetStyle(g_font_str, g_color_bk, g_color_text, g_color_hover, g_color_bk);
@@ -227,47 +227,49 @@ void CMainFrame::OnFileClear() {
 }
 
 UINT Run(LPVOID param) {
-	try {
-		g_progress.store(0);
-		g_files_progress.assign(g_files.size(), std::pair<int, int>(0, 0));
-		g_status = Status::RUN;
-		void** params = (void**)param;
-		CMainFrame* wnd = dynamic_cast<CMainFrame*>((CWnd*)params[0]);
-		char* extension = (char*)params[1];
-		//Prepare
-		g_total_frame_count = 0;
-		g_prepare.store(false);
-		std::vector<CString>& files = g_files;
-		wnd->m_wndView.Invalidate();
-		for (int i = 0; i<files.size(); i++) {
-			CString cfile = files[i];
-			int64_t frame_count;
-			std::string file = mspring::String::ToString(cfile);
-			GetVideoInfo(file, &frame_count);
-			g_files_progress[i].second = frame_count;
-			g_total_frame_count += frame_count;
-		}
-		g_prepare.store(true);
-		//Run
-		wnd->m_wndView.Invalidate();
-		for (int i = 0; i < files.size(); i++) {
+	g_progress.store(0);
+	g_files_progress.assign(g_files.size(), std::pair<int, int>(0, 0));
+	g_status = Status::RUN;
+	void** params = (void**)param;
+	CMainFrame* wnd = dynamic_cast<CMainFrame*>((CWnd*)params[0]);
+	std::string extension = (char*)params[1];
+	
+	
+	
+	//Prepare
+	g_total_frame_count = 0;
+	g_prepare.store(false);
+	std::vector<CString>& files = g_files;
+	wnd->m_wndView.Invalidate();
+	for (int i = 0; i < files.size(); i++) {
+		CString cfile = files[i];
+		int64_t frame_count;
+		std::string file = mspring::String::ToString(cfile);
+		GetVideoInfo(file, &frame_count);
+		g_files_progress[i].second = frame_count;
+		g_total_frame_count += frame_count;
+	}
+	g_prepare.store(true);
+	//Run
+	wnd->m_wndView.Invalidate();
+	for (int i = 0; i < files.size(); i++) {
+		CString cfile = files[i];
+		std::string file = CT2CA((LPCWSTR)cfile);
+		std::string folder = file.substr(0, file.find_last_of(".")) + ".frames";
+		DeleteDirectory(folder, true);
+	}
+#pragma omp parallel for schedule(dynamic) shared(extension)
+	for (int i = 0; i < files.size(); i++) {
+		try {
 			CString cfile = files[i];
 			std::string file = CT2CA((LPCWSTR)cfile);
 			std::string folder = file.substr(0, file.find_last_of(".")) + ".frames";
 			DeleteDirectory(folder, true);
-		}
-#pragma omp parallel for schedule(dynamic)
-		for (int i=0;i<files.size();i++) {
-			CString cfile = files[i];
-			std::string file = CT2CA((LPCWSTR)cfile);
-			std::string folder = file.substr(0, file.find_last_of(".")) + ".frames";
-			DeleteDirectory(folder,true);
 			do {
 				//_mkdir(folder.c_str());
 				CreateDirectoryA(folder.c_str(), 0);
-				
 				Sleep(1);
-			} while (PathFolderExistsA(folder.c_str())==FALSE);
+			} while (PathFolderExistsA(folder.c_str()) == FALSE);
 			cv::VideoCapture vc(file);
 			if (vc.isOpened() == false) {
 				continue;
@@ -275,7 +277,8 @@ UINT Run(LPVOID param) {
 			cv::Mat frame;
 			int n = 0;
 			std::ostringstream oss;
-			while (vc.read(frame)==true) {
+			while (vc.read(frame) == true) {
+
 				oss.str("");
 				oss.width(8);
 				oss.fill('0');
@@ -284,23 +287,23 @@ UINT Run(LPVOID param) {
 				std::string dst = folder + "\\" + oss.str() + "." + extension;
 				cv::imwrite(dst, frame);	//imwrite has unknown error in windows7
 
-				//IplImage*iplimage = &IplImage(frame);
-				//cvSaveImage(dst.c_str(), iplimage);
 				g_files_progress[i].first++;
 				g_progress++;
 				wnd->m_wndView.Invalidate();
 				//wnd->SendMessage(WM_NCPAINT);
-			}
 
+			}
+		} catch (cv::Exception& e) {
+			::MessageBoxA(NULL, e.what(), "exception", MB_OK);
+		} catch (std::exception& e) {
+			::MessageBoxA(NULL, e.what(), "exception", MB_OK);
+		} catch (...) {
+			::MessageBoxA(NULL, "unknown exception", "exception", MB_OK);
 		}
-		g_status = Status::WAIT;
-		wnd->m_wndView.Invalidate();
-		wnd->MessageBox(TEXT("Complete!!"), TEXT("message"), MB_OK);
-	} catch (std::exception& e) {
-		::MessageBoxA(nullptr, e.what(), "exception", MB_OK);
-	} catch (...) {
-		::MessageBoxA(nullptr, "unknown exception", "exception", MB_OK);
 	}
+	g_status = Status::WAIT;
+	wnd->m_wndView.Invalidate();
+	wnd->MessageBox(TEXT("Complete!!"), TEXT("message"), MB_OK);
 	return 0;
 }
 void CMainFrame::OnExtractAsJPG() {
@@ -312,7 +315,9 @@ void CMainFrame::OnExtractAsJPG() {
 		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
 		return;
 	}
-	void* params[2] = { this,"jpg" };
+	char extension[256];
+	strcpy_s(extension, 256, "jpg");
+	void* params[2] = { this,extension };
 #ifdef _DEBUG
 	Run(params);
 #else
@@ -328,7 +333,9 @@ void CMainFrame::OnExtractAsPng() {
 		this->MessageBox(TEXT("No videos"), TEXT("warning"), MB_OK);
 		return;
 	}
-	void* params[2] = { this,"png" };
+	char extension[256];
+	strcpy_s(extension, 256, "png");
+	void* params[2] = { this,extension };
 #ifdef _DEBUG
 	Run(params);
 #else
