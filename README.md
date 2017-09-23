@@ -8,7 +8,7 @@
 or
 
 This repository..
-`FSpring/FSpring(mfc)/FSpring(win64)/`
+`FSpring/FSpring(windows)/FSpring(win64)/`
 
 #### Requirement
 * [Visual studio 2015](https://imagine.microsoft.com/ko-KR/Catalog/Product/101)
