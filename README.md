@@ -3,18 +3,28 @@
 * * *
 #### Demo
 
-[FSpring Demo Dropbox](https://www.dropbox.com/s/sy0y0n6bpqdrrni/FSpring%28win64%29.zip?dl=1)
+[FSpring(win64).zip](https://www.dropbox.com/s/sy0y0n6bpqdrrni/FSpring%28win64%29.zip?dl=1)
+[FSpring(linux64).tar.gz](https://www.dropbox.com/s/b166olaybi8r53j/FSpring%28linux64%29.tar.gz?dl=1)
 
 or
 
 This repository..
 `FSpring/FSpring(windows)/FSpring(win64)/`
+`FSpring/FSpring(ubuntu)/FSpring(linux64)/`
 
 #### Requirement
-* [Visual studio 2015](https://imagine.microsoft.com/ko-KR/Catalog/Product/101)
-* [FFmpeg 3.3.3](https://ffmpeg.zeranoe.com/builds/)
-* [Opencv 3.3.0](https://github.com/opencv/opencv/releases/tag/3.3.0)
-* [MSpring](https://github.com/springkim/MSpring)
+* ==Windows==
+	* [Visual studio 2015](https://imagine.microsoft.com/ko-KR/Catalog/Product/101)
+	* [FFmpeg 3.3.3](https://ffmpeg.zeranoe.com/builds/)
+	* [Opencv 3.3.0](https://github.com/opencv/opencv/releases/tag/3.3.0)
+	* [MSpring](https://github.com/springkim/MSpring)
+* ==Ubuntu==
+	* [CLion](https://www.jetbrains.com/clion/)
+	* [Opencv 3.3.0](https://github.com/opencv/opencv/releases/tag/3.3.0)
+	* [nana](http://nanapro.org/en-us/)
+	```bash
+    apt-get install gcc g++ python3 vim build-essential cmake pkg-config libjpeg-dev libtiff5-dev libjasper-dev libpng12-dev libavcodec-dev libavformat-dev libswscale-dev libxvidcore-dev libx264-dev libxine2-dev libv4l-dev v4l-utils libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libqt4-dev mesa-utils libgl1-mesa-dri libqt4-opengl-dev libatlas-base-dev gfortran libeigen3-dev python2.7-dev python3-dev python-numpy python3-numpy -y
+	```
 
 #### How to use
 
