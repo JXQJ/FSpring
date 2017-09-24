@@ -1,0 +1,2 @@
+libippicv.a filter=lfs diff=lfs merge=lfs -text
+libnana.a filter=lfs diff=lfs merge=lfs -text
