@@ -207,6 +207,7 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\x64\Release\*.dll" "$(TargetDir)"</Command>
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="version.h" />
     <ClInclude Include="VideoListView.h" />
   </ItemGroup>
   <ItemGroup>
