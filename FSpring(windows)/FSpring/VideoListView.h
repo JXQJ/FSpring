@@ -3,6 +3,7 @@
 #include"MSpring/MSpring.h"
 #include"repository.h"
 #include"resource.h"
+
 class VideoListView :
 	public VirtualView {
 public:
@@ -16,6 +17,9 @@ public:
 	void OnMouseMove(UINT nFlags, CPoint point)override;
 	void OnMouseLeave()override;
 	void OnTimer(UINT_PTR nIDEvent)override;
+	void ViewRelease() {
+		m_is_drag = false;
+	}
 private:
 	const UINT_PTR TIMER_SCROLLMOVE = 0x65C187C6;
 protected:

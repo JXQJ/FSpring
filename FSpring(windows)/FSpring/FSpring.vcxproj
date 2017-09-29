@@ -202,6 +202,7 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\x64\Release\*.dll" "$(TargetDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FSpring.h" />
+    <ClInclude Include="ImageListView.h" />
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="repository.h" />
     <ClInclude Include="Resource.h" />
@@ -209,9 +210,11 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\x64\Release\*.dll" "$(TargetDir)"</Command>
     <ClInclude Include="targetver.h" />
     <ClInclude Include="version.h" />
     <ClInclude Include="VideoListView.h" />
+    <ClInclude Include="VideoWriter.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FSpring.cpp" />
+    <ClCompile Include="ImageListView.cpp" />
     <ClCompile Include="MainFrm.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -220,6 +223,7 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\x64\Release\*.dll" "$(TargetDir)"</Command>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="VideoListView.cpp" />
+    <ClCompile Include="VideoWriter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FSpring.rc" />
@@ -228,15 +232,21 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\x64\Release\*.dll" "$(TargetDir)"</Command>
     <None Include="res\FSpring.rc2" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="res\bitmap1.bmp" />
     <Image Include="res\BLOGO.ico" />
     <Image Include="res\close.bmp" />
     <Image Include="res\fspring.bmp" />
     <Image Include="res\FSpring.ico" />
+    <Image Include="res\image.bmp" />
     <Image Include="res\maximize.bmp" />
     <Image Include="res\minimize.bmp" />
+    <Image Include="res\video.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties RESOURCE_FILE="FSpring.rc" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>

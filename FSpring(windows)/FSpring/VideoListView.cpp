@@ -21,7 +21,7 @@ void VideoListView::OnPaint(CDC* pDC) {
 		memDC.CreateCompatibleDC(pDC);
 		CBitmap bmp;
 		CBitmap* oldbmp = nullptr;
-		bmp.LoadBitmapW(IDB_FSPRING);
+		bmp.LoadBitmapW(IDB_VIDEO);
 		bmp.GetBitmap(&bmpinfo);
 		oldbmp = memDC.SelectObject(&bmp);
 		int newWidth = 0;

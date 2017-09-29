@@ -11,31 +11,7 @@
 #endif
 
 // CMainFrame
-BOOL PathFolderExistsA(const char* dir) {
-	DWORD ftyp = GetFileAttributesA(dir);
-	return (ftyp&FILE_ATTRIBUTE_DIRECTORY);
-}
-bool DeleteDirectory(std::string dir_path, bool noRecycleBin = true) {
-	char *pszFrom = new char[dir_path.length() + 2];
-	strcpy_s(pszFrom, dir_path.length() + 2, dir_path.c_str());
-	pszFrom[dir_path.length()] = '\0';       // double-null termination
-	pszFrom[dir_path.length() + 1] = '\0';   // double-null termination
-	SHFILEOPSTRUCTA	FileOp;
-	FileOp.hwnd = NULL;
-	FileOp.wFunc = FO_DELETE;
-	FileOp.pFrom = pszFrom;
-	FileOp.pTo = NULL;
-	FileOp.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
-	if (noRecycleBin == false) {
-		FileOp.fFlags |= FOF_ALLOWUNDO;
-	}
-	FileOp.fAnyOperationsAborted = FALSE;
-	FileOp.lpszProgressTitle = NULL;
-	FileOp.hNameMappings = NULL;
-	int ret = SHFileOperationA(&FileOp);
-	delete[] pszFrom;
-	return (ret == 0);
-}
+
 void GetVideoInfo(std::string video_file, int64_t* pframe_count = nullptr, int64_t* pduration_msec = nullptr, double* pfps = nullptr) {
 	bool ret = true;
 	av_register_all();
@@ -87,6 +63,13 @@ BEGIN_MESSAGE_MAP(CMainFrame, MSpringFrame)
 	ON_COMMAND(ID_EXTRACT_SAVEASPNG, &CMainFrame::OnExtractAsPng)
 	ON_COMMAND(ID_FILE_CLEARVIDEO, &CMainFrame::OnFileClear)
 	ON_WM_DESTROY()
+	ON_COMMAND(ID_FILE_ADDVIDEOFOLDER, &CMainFrame::OnFileAddvideofolder)
+	ON_WM_LBUTTONDOWN()
+	ON_WM_NCLBUTTONDOWN()
+	ON_COMMAND(ID_FILE_EXIT32781, &CMainFrame::OnFileExit32781)
+	ON_COMMAND(ID_FILE_CLEARIMAGES, &CMainFrame::OnFileClearimages)
+	ON_COMMAND(ID_FILE_ADDIMAGES, &CMainFrame::OnFileAddimages)
+	ON_COMMAND(ID_MAKE_SAVEASAVI, &CMainFrame::OnMakeSaveasavi)
 END_MESSAGE_MAP()
 
 // CMainFrame 생성/소멸
@@ -114,21 +97,34 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	this->AddSysBtn(IDB_FRAME_MINIMIZE, MSpringFrame::ButtonEvent_MinimizeWindow);
 	this->SetIcon(IDR_MAINFRAME);
 
-
-	this->SetTitle(TEXT("FSpring 1.1"));
+	VersionCheck(this);
+	this->SetTitle(mspring::String::ToCString("FSpring "+ __version__));
 	this->SetStyle(g_font_str, g_color_bk, g_color_text, g_color_border);
 
-	m_menu_frame = new MSpringMenuFrame(this);
-	m_menu_frame->SetStyle(g_font_str, g_color_bk, g_color_text, g_color_hover, g_color_bk);
-	m_menu_frame->SetMenu(IDR_MAINFRAME);
-	m_menu_frame->SetPosition(0);
-	this->AddExpansionClass(m_menu_frame);
+	m_menu_frame_video = new MSpringMenuFrame(this);
+	m_menu_frame_video->SetStyle(g_font_str, g_color_bk, g_color_text, g_color_hover, g_color_bk);
+	m_menu_frame_video->SetMenu(IDR_MAINFRAME);
+	m_menu_frame_video->SetPosition(0);
 
+	m_menu_frame_image = new MSpringMenuFrame(this);
+	m_menu_frame_image->SetStyle(g_font_str, g_color_bk, g_color_text, g_color_hover, g_color_bk);
+	m_menu_frame_image->SetMenu(IDR_MENU1);
+	m_menu_frame_image->SetPosition(0);
+	this->AddExpansionClass(m_menu_frame_video);
+
+	m_tab_frame = new MSpringTabFrame(this);
+	m_tab_frame->SetStyle(g_font_str, g_color_thumb, g_color_deactivate, g_color_bk, g_color_text);
+	m_tab_frame->SetPosition(1);
+	m_tab_frame->AddTab(TEXT("Frame Extract"));
+	m_tab_frame->AddTab(TEXT("Video Maker"));
+	this->AddExpansionClass(m_tab_frame);
 	//m_progress_frame = new ProgressExpansion(this);
 	//this->AddExpansionClass(m_progress_frame);
 
 	m_wndView.SetStyle(g_color_bk);
-	m_wndView.m_view = new VideoListView(&m_wndView);
+	m_video_view = new VideoListView(&m_wndView);
+	m_image_view = new ImageListView(&m_wndView);
+	m_wndView.m_view = m_video_view;
 	this->SetWindowPos(nullptr, 100, 0, 1200, 600, SWP_NOMOVE);
 #ifdef _DEBUG
 	if (::AllocConsole() == TRUE) {
@@ -140,6 +136,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct) {
 	}
 #endif
 	g_status = Status::INIT;
+	g_status2 = Status::INIT;
 	return 0;
 }
 
@@ -215,6 +212,35 @@ void CMainFrame::OnFileOpenvideo() {
 		this->Invalidate();
 	}
 }
+void CMainFrame::OnFileAddvideofolder() {
+	if (g_status == Status::RUN) {
+		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
+		return;
+	}
+	std::vector<CString>& files = g_files;
+
+	CFolderPickerDialog fpd(nullptr, OFN_ALLOWMULTISELECT | OFN_FILEMUSTEXIST);
+	if (IDOK == fpd.DoModal()) {
+		std::set<CString> overlab_set;
+		for (auto&e : files) {
+			overlab_set.insert(e);
+		}
+		for (POSITION pos = fpd.GetStartPosition(); pos != NULL;) {
+			CString path = fpd.GetNextPathName(pos);
+			std::string cpath = mspring::String::ToString(path);
+			std::vector<std::string> cfiles = ispring::File::FileList(cpath, "*.avi;*.mp4;*.mkv;*.mov",true);
+			for (auto& cfile : cfiles) {
+				if (overlab_set.find(mspring::String::ToCString(cfile)) == overlab_set.end()) {
+					files.push_back(mspring::String::ToCString(cfile));
+				}
+			}
+		}
+		if (files.size() > 0) {
+			g_status = Status::WAIT;
+		}
+		this->Invalidate();
+	}
+}
 void CMainFrame::OnFileClear() {
 	if (g_status == Status::RUN) {
 		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
@@ -254,22 +280,20 @@ UINT Run(LPVOID param) {
 	wnd->m_wndView.Invalidate();
 	for (int i = 0; i < files.size(); i++) {
 		CString cfile = files[i];
-		std::string file = CT2CA((LPCWSTR)cfile);
+		std::string file = mspring::String::ToString(cfile);
 		std::string folder = file.substr(0, file.find_last_of(".")) + ".frames";
-		DeleteDirectory(folder, true);
+		ispring::File::DirectoryErase(folder);
 	}
 #pragma omp parallel for schedule(dynamic) shared(extension)
 	for (int i = 0; i < files.size(); i++) {
 		try {
-			CString cfile = files[i];
-			std::string file = CT2CA((LPCWSTR)cfile);
+			std::string file = mspring::String::ToString(files[i]);
 			std::string folder = file.substr(0, file.find_last_of(".")) + ".frames";
-			DeleteDirectory(folder, true);
+			ispring::File::DirectoryErase(folder);
 			do {
 				//_mkdir(folder.c_str());
 				CreateDirectoryA(folder.c_str(), 0);
-				Sleep(1);
-			} while (PathFolderExistsA(folder.c_str()) == FALSE);
+			} while (ispring::File::DirectoryExist(folder)==false);
 			cv::VideoCapture vc(file);
 			if (vc.isOpened() == false) {
 				continue;
@@ -315,14 +339,14 @@ void CMainFrame::OnExtractAsJPG() {
 		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
 		return;
 	}
-	char extension[256];
+	static char extension[256];
 	strcpy_s(extension, 256, "jpg");
-	void* params[2] = { this,extension };
-#ifdef _DEBUG
-	Run(params);
-#else
+	static void* params[2];
+	params[0] = this;
+	params[1] = extension;
+
 	::AfxBeginThread(Run, (void*)params);
-#endif
+
 }
 void CMainFrame::OnExtractAsPng() {
 	if (g_status == Status::RUN) {
@@ -333,14 +357,14 @@ void CMainFrame::OnExtractAsPng() {
 		this->MessageBox(TEXT("No videos"), TEXT("warning"), MB_OK);
 		return;
 	}
-	char extension[256];
+	static char extension[256];
 	strcpy_s(extension, 256, "png");
-	void* params[2] = { this,extension };
-#ifdef _DEBUG
-	Run(params);
-#else
+	static void* params[2];
+	params[0] = this;
+	params[1] = extension;
+
 	::AfxBeginThread(Run, (void*)params);
-#endif
+
 }
 
 void CMainFrame::OnGetMinMaxInfo(MINMAXINFO* lpMMI) {
@@ -355,4 +379,141 @@ void CMainFrame::OnDestroy() {
 #ifdef _DEBUG
 	FreeConsole();
 #endif
+}
+
+
+
+
+
+void CMainFrame::OnLButtonDown(UINT nFlags, CPoint point) {
+	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
+	
+	MSpringFrame::OnLButtonDown(nFlags, point);
+}
+
+
+void CMainFrame::OnNcLButtonDown(UINT nHitTest, CPoint point) {
+	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
+	MSpringFrame::OnNcLButtonDown(nHitTest, point);
+	printf("%d\n", m_tab_frame->GetCurrentTab());
+	if (m_tab_frame->GetCurrentTab() == 0) {
+		this->m_expansion[0] = m_menu_frame_video;
+		this->m_wndView.m_view = m_video_view;
+		m_image_view->ViewRelease();
+	} else {
+		this->m_expansion[0] = m_menu_frame_image;
+		this->m_wndView.m_view = m_image_view;
+		m_video_view->ViewRelease();
+	}
+	this->m_wndView.Invalidate();
+	MSpringFrame::OnNcPaint();
+}
+
+
+void CMainFrame::OnFileExit32781() {
+	this->CloseWindow();
+}
+
+
+void CMainFrame::OnFileClearimages() {
+	if (g_status2 == Status::RUN) {
+		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
+		return;
+	}
+	std::vector<CString>& files = g_image_files;
+	files.clear();
+	g_status2 = Status::INIT;
+	g_succ = 0;
+	this->Invalidate();
+}
+
+
+void CMainFrame::OnFileAddimages() {
+	if (g_status2 == Status::RUN) {
+		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
+		return;
+	}
+	std::vector<CString>& files = g_image_files;
+	const TCHAR* IMAGE_FILTER = TEXT("Image File(*bmp;*.jpg;*.jpeg;*.png)|*.bmp;*.jpg;*.jpeg;*.png|BMP File(*.bmp)|*.bmp|JPG File(*.jpg)|*.jpg|JPEG File(*.jpeg)|*.jpeg|PNG File(*.png)|*.png|");
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT, IMAGE_FILTER);
+	CString strFileList;
+	const unsigned int c_cbBuffSize = (1000 * (MAX_PATH + 1)) + 1;
+	dlg.GetOFN().lpstrFile = strFileList.GetBuffer(c_cbBuffSize);
+	dlg.GetOFN().nMaxFile = c_cbBuffSize;
+	if (IDOK == dlg.DoModal()) {
+		std::set<CString> overlab_set;
+		//make set
+		for (auto&e : files) {
+			overlab_set.insert(e);
+		}
+		for (POSITION pos = dlg.GetStartPosition(); pos != NULL;) {
+			CString path = dlg.GetNextPathName(pos);
+			if (overlab_set.find(path) == overlab_set.end()) {
+				files.push_back(path);
+			}
+		}
+		if (files.size() > 0) {
+			g_status2 = Status::WAIT;
+		}
+		g_succ = 0;
+		this->Invalidate();
+	}
+}
+
+UINT MakeVideo(LPVOID param) {
+	g_status2 = Status::RUN;
+	void** params = (void**)param;
+	CMainFrame* wnd = dynamic_cast<CMainFrame*>((CWnd*)params[0]);
+	std::string save = (char*)params[1];
+	int fps = *(int*)params[2];
+	g_succ = 0;
+
+	cv::Mat img = cv::imread(mspring::String::ToString(g_image_files[0]));
+	{
+		cv::VideoWriter vw;
+		vw.open(save, cv::VideoWriter::fourcc('X', 'V', 'I', 'D'), fps, img.size(), true);
+		for (int i = 0; i < g_image_files.size(); i++) {
+			img = cv::imread(mspring::String::ToString(g_image_files[i]));
+			g_succ++;
+			vw << img;
+			wnd->m_wndView.Invalidate();
+		}
+	}
+	g_status2 = Status::WAIT;
+	wnd->MessageBox(TEXT("Complete!!"), TEXT("message"), MB_OK);
+	return 1;
+}
+void CMainFrame::OnMakeSaveasavi() {
+	if (g_status2 == Status::INIT) {
+		this->MessageBox(TEXT("No images"), TEXT("warning"), MB_OK);
+		return;
+	}
+	if (g_status2 == Status::RUN) {
+		this->MessageBox(TEXT("Extractor is already running"), TEXT("warning"), MB_OK);
+		return;
+	}
+	if (g_image_files.size() <= 1) {
+		this->MessageBox(TEXT("Number of images are too small"), TEXT("warning"), MB_OK);
+		return;
+	}
+	static CString path;
+	static CString file = TEXT("output");
+	static int fps = 15;
+	static char _save[MAX_PATH];
+	CVideoWriter dlg(nullptr, path, file, fps);
+	if (dlg.DoModal() == IDOK) {
+		std::string path2 = mspring::String::ToString(path);
+		std::string file2 = mspring::String::ToString(file);
+		if (path2.back() != '\\' && path2.back() != '/') {
+			path2.push_back('/');
+		}
+		std::string save = path2 + file2 + ".avi";
+		
+		strcpy_s(_save, MAX_PATH, save.c_str());
+		static void* params[3];
+		params[0] = this;
+		params[1] = _save;
+		params[2] = &fps;
+		::AfxBeginThread(MakeVideo, (void*)params);
+	}
 }

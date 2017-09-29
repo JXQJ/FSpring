@@ -42,6 +42,12 @@
     <ClInclude Include="version.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="ImageListView.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="VideoWriter.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FSpring.cpp">
@@ -54,6 +60,12 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="VideoListView.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageListView.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="VideoWriter.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -71,9 +83,6 @@
     <Image Include="res\FSpring.ico">
       <Filter>리소스 파일</Filter>
     </Image>
-    <Image Include="res\bitmap1.bmp">
-      <Filter>리소스 파일</Filter>
-    </Image>
     <Image Include="res\fspring.bmp">
       <Filter>리소스 파일</Filter>
     </Image>
@@ -87,6 +96,12 @@
       <Filter>리소스 파일</Filter>
     </Image>
     <Image Include="res\minimize.bmp">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\image.bmp">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\video.bmp">
       <Filter>리소스 파일</Filter>
     </Image>
   </ItemGroup>
