@@ -46,24 +46,30 @@ inline std::string GetHtml(std::string url) {
 	return html;
 }
 inline std::string GetNewVersion() {
-	std::string url_git = "https://github.com/springkim/FSpring/blob/master/FSpring(windows)/FSpring/version.h";
+	std::string url_git = "https://github.com/springkim/FSpring/blob/master/FSpring(windows)/FSpring/version.txt";
 	std::string html = GetHtml(url_git);
 	std::string tag_begin = "&lt;fspring-version&gt;";
 	std::string tag_end = "&lt;/fspring-version&gt;";
 	size_t pos_beg = html.find(tag_begin) + tag_begin.length();
 	size_t pos_end = html.find(tag_end);
+	if (pos_beg == std::string::npos || pos_end == std::string::npos) {
+		return "";
+	}
 	std::string version = html.substr(pos_beg, pos_end - pos_beg);
 	if (version.length() == 0) {
-		version = "Can't load new version information";
+		version = "";
 	}
 	return version;
 }
 #if 1
-#define FSPRING_VERSION <fspring-version>1.2</fspring-version>
 const std::string __version__ = "1.2";
 inline UINT _VersionCheck(LPVOID param) {
 	CWnd* wnd = (CWnd*)param;
-	if (__version__ != GetNewVersion()) {
+	std::string new_version = GetNewVersion();
+	if (new_version.length() == 0) {
+		return 1;
+	}
+	if (__version__ != new_version) {
 		if (IDYES == wnd->MessageBox(TEXT("new version is available\nPlease visit https://github.com/springkim/FSpring \n"), TEXT("news"), MB_YESNO)) {
 			ShellExecute(NULL, TEXT("open"), TEXT("https://github.com/springkim/FSpring"), TEXT(""), TEXT(""), SW_SHOW);
 			wnd->CloseWindow();
