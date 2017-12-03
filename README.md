@@ -40,7 +40,7 @@
 <img src="https://i.imgur.com/SodNUwL.png" height="100"><img src="https://i.imgur.com/Hy4rRMp.png" height="100">
 
 ##### Write FPS that you want.(windows only)
-<img src="https://i.imgur.com/Bx9FuTF.png" height="100">
+<img src="https://i.imgur.com/Bx9FuTF.png" height="150">
 Ubuntu version doesn't have this option. It will generate whole frames.
 
 
@@ -57,8 +57,8 @@ Ubuntu version doesn't have this option. It will generate whole frames.
 
 ##### Write video path,name and FPS in Dialog.
 
-<img src="https://i.imgur.com/aNSHbdi.png" width="600">
-<img src="https://i.imgur.com/85PfPus.png" width="600">
+<img src="https://i.imgur.com/aNSHbdi.png" width="800">
+<img src="https://i.imgur.com/85PfPus.png" width="800">
 
 #### Version Info
 
