@@ -201,6 +201,7 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\x64\Release\*.dll" "$(TargetDir)"</Command>
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FrameExtractor.h" />
     <ClInclude Include="FSpring.h" />
     <ClInclude Include="ImageListView.h" />
     <ClInclude Include="MainFrm.h" />
@@ -213,6 +214,7 @@ xcopy /Y "$(SolutionDir)3rdparty\bin\x64\Release\*.dll" "$(TargetDir)"</Command>
     <ClInclude Include="VideoWriter.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="FrameExtractor.cpp" />
     <ClCompile Include="FSpring.cpp" />
     <ClCompile Include="ImageListView.cpp" />
     <ClCompile Include="MainFrm.cpp" />

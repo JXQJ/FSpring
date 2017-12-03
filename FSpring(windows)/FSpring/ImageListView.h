@@ -115,8 +115,8 @@ protected:
 		proth_brush.CreateSolidBrush(RGB(38, 139, 210));
 		old_brush = pDC->SelectObject(&proth_brush);
 		CRect thumb_rect = progress_rect;
-		if (g_progress != 0) {
-			thumb_rect.right = static_cast<LONG>(thumb_rect.left + progress_rect.Width()*((float)g_succ / g_image_files.size()));
+		if (g_succ != 0) {
+			thumb_rect.right = static_cast<LONG>(thumb_rect.left + progress_rect.Width()*((double)g_succ / g_image_files.size()));
 		} else {
 			thumb_rect.right = thumb_rect.left;
 		}

@@ -1,6 +1,9 @@
 IF EXIST "x64" (  
     RMDIR /S /Q "x64"
 )
+IF EXIST "Debug" (  
+    RMDIR /S /Q "Debug"
+)
 IF EXIST ".vs" (  
     RMDIR /S /Q ".vs"
 )

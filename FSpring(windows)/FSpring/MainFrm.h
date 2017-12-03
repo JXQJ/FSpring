@@ -21,6 +21,7 @@
 #include"VideoListView.h"
 #include"ImageListView.h"
 #include"VideoWriter.h"
+#include"FrameExtractor.h"
 #include"repository.h"
 extern "C" {
 #include <libavformat/avformat.h>

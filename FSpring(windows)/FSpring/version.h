@@ -62,14 +62,14 @@ inline std::string GetNewVersion() {
 	return version;
 }
 #if 1
-const std::string __version__ = "1.2";
+const std::string __version__ = "1.3";
 inline UINT _VersionCheck(LPVOID param) {
 	CWnd* wnd = (CWnd*)param;
 	std::string new_version = GetNewVersion();
 	if (new_version.length() == 0) {
 		return 1;
 	}
-	if (__version__ != new_version) {
+	if (atof(__version__.c_str()) < atof(new_version.c_str())) {
 		if (IDYES == wnd->MessageBox(TEXT("new version is available\nPlease visit https://github.com/springkim/FSpring \n"), TEXT("news"), MB_YESNO)) {
 			ShellExecute(NULL, TEXT("open"), TEXT("https://github.com/springkim/FSpring"), TEXT(""), TEXT(""), SW_SHOW);
 			wnd->CloseWindow();
@@ -78,8 +78,7 @@ inline UINT _VersionCheck(LPVOID param) {
 	return 1;
 }
 inline void VersionCheck(CWnd* wnd) {
-	CWinThread* p=::AfxBeginThread(_VersionCheck,(LPVOID)wnd);
-	CloseHandle(p);
+	::AfxBeginThread(_VersionCheck,(LPVOID)wnd);
 }
 #endif
 #endif  //FSPRING_7E1_9_1C_VERSION_HPP_INCLUDED

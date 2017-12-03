@@ -253,6 +253,11 @@ void CMainFrame::OnFileClear() {
 }
 
 UINT Run(LPVOID param) {
+	int myfps = 60;
+	FrameExtractor dlg(nullptr, myfps);
+	if (dlg.DoModal() != IDOK) {
+		return 0;
+	}
 	g_progress.store(0);
 	g_files_progress.assign(g_files.size(), std::pair<int, int>(0, 0));
 	g_status = Status::RUN;
@@ -261,17 +266,21 @@ UINT Run(LPVOID param) {
 	std::string extension = (char*)params[1];
 	
 	
+
 	
 	//Prepare
 	g_total_frame_count = 0;
 	g_prepare.store(false);
 	std::vector<CString>& files = g_files;
+	std::vector<double> fps_vec;
 	wnd->m_wndView.Invalidate();
 	for (int i = 0; i < files.size(); i++) {
 		CString cfile = files[i];
 		int64_t frame_count;
 		std::string file = mspring::String::ToString(cfile);
-		GetVideoInfo(file, &frame_count);
+		double _fps = 0;
+		GetVideoInfo(file, &frame_count,nullptr,&_fps);
+		fps_vec.push_back(_fps);
 		g_files_progress[i].second = frame_count;
 		g_total_frame_count += frame_count;
 	}
@@ -287,6 +296,7 @@ UINT Run(LPVOID param) {
 #pragma omp parallel for schedule(dynamic) shared(extension)
 	for (int i = 0; i < files.size(); i++) {
 		try {
+			double fps = fps_vec[i];
 			std::string file = mspring::String::ToString(files[i]);
 			std::string folder = file.substr(0, file.find_last_of(".")) + ".frames";
 			ispring::File::DirectoryErase(folder);
@@ -295,14 +305,20 @@ UINT Run(LPVOID param) {
 				CreateDirectoryA(folder.c_str(), 0);
 			} while (ispring::File::DirectoryExist(folder)==false);
 			cv::VideoCapture vc(file);
+			vc.set(CV_CAP_PROP_FPS, 1);
 			if (vc.isOpened() == false) {
 				continue;
 			}
 			cv::Mat frame;
 			int n = 0;
 			std::ostringstream oss;
+			double fps_ratio = fps / myfps;
+			double fcnt = 0.0;
 			while (vc.read(frame) == true) {
-
+				fcnt += 1.0;
+				if (myfps<fps && fcnt < fps_ratio*n) {
+					continue;
+				}
 				oss.str("");
 				oss.width(8);
 				oss.fill('0');
@@ -311,8 +327,8 @@ UINT Run(LPVOID param) {
 				std::string dst = folder + "\\" + oss.str() + "." + extension;
 				cv::imwrite(dst, frame);	//imwrite has unknown error in windows7
 
-				g_files_progress[i].first++;
-				g_progress++;
+				g_files_progress[i].first=fcnt;
+				g_progress = fcnt;
 				wnd->m_wndView.Invalidate();
 				//wnd->SendMessage(WM_NCPAINT);
 

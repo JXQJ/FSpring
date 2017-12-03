@@ -130,7 +130,7 @@ void VideoListView::OnPaint(CDC* pDC) {
 				progress_str.Format(TEXT("(%d/%d)"), g_files_progress[page_idx].first, g_files_progress[page_idx].second);
 				pDC->TextOutW(thumb_rect.right, page_y, progress_str);
 				if (g_files_progress[page_idx].first != 0) {
-					thumb_rect.right = static_cast<LONG>(thumb_rect.left + progress_rect.Width()*((float)g_files_progress[page_idx].first / g_files_progress[page_idx].second));
+					thumb_rect.right = static_cast<LONG>(thumb_rect.left + progress_rect.Width()*(((float)g_files_progress[page_idx].first) / g_files_progress[page_idx].second));
 				} else {
 					thumb_rect.right = thumb_rect.left;
 				}
