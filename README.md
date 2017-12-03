@@ -25,9 +25,9 @@
 
 ### How to use 
 <img src="https://i.imgur.com/ElCyyzT.png" width="48">
-<img src="https://i.imgur.com/GrbZWbK.gif" width="600">
+<img src="https://i.imgur.com/GrbZWbK.gif" width="800">
 <img src="https://i.imgur.com/WUmFQlx.png" width="48">
-<img src="https://i.imgur.com/226PpTN.png" width="600">
+<img src="https://i.imgur.com/226PpTN.png" width="800">
 
 ##### 1. Run **FSpring.exe**
 <img src="https://i.imgur.com/9MUuQnk.png" width="600">
@@ -45,9 +45,9 @@ Ubuntu version doesn't have this option. It will generate whole frames.
 
 
 <img src="https://i.imgur.com/ElCyyzT.png" width="48">
-<img src="https://i.imgur.com/WsHB7jf.png" width="600">
+<img src="https://i.imgur.com/WsHB7jf.png" width="800">
 <img src="https://i.imgur.com/WUmFQlx.png" width="48">
-<img src="https://i.imgur.com/ijEOkZa.png" width="600">
+<img src="https://i.imgur.com/ijEOkZa.png" width="800">
 
 ### How to use Video Maker
 #####  `File(&F) -> Add images` click. You can select multiple image files.
@@ -59,7 +59,9 @@ Ubuntu version doesn't have this option. It will generate whole frames.
 
 <img src="https://i.imgur.com/aNSHbdi.png" width="600">
 <img src="https://i.imgur.com/85PfPus.png" width="600">
+
 #### Version Info
+
 * Windows
     * 0.1.0
         * test.
