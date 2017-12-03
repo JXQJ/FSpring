@@ -305,6 +305,9 @@ UINT Run(LPVOID param) {
 				CreateDirectoryA(folder.c_str(), 0);
 			} while (ispring::File::DirectoryExist(folder)==false);
 			cv::VideoCapture vc(file);
+			std::string::size_type slash = file.find_last_of("/\\") + 1;
+			std::string::size_type dot = file.find_last_of(".");
+			std::string pure = file.substr(slash, dot - slash);
 			vc.set(CV_CAP_PROP_FPS, 1);
 			if (vc.isOpened() == false) {
 				continue;
@@ -324,7 +327,7 @@ UINT Run(LPVOID param) {
 				oss.fill('0');
 				oss << n;
 				n++;
-				std::string dst = folder + "\\" + oss.str() + "." + extension;
+				std::string dst = folder + "\\" + pure+"_"+oss.str() + "." + extension;
 				cv::imwrite(dst, frame);	//imwrite has unknown error in windows7
 
 				g_files_progress[i].first=fcnt;

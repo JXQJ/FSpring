@@ -75,6 +75,7 @@ Ubuntu version doesn't have this option. It will generate whole frames.
     * 1.3
     	* Progress bug fixed.
     	* Extraction according to FPS.
+    	* Adding prefix for each frame.
 * Linux
 	* 1.0.0
 		* first release.
