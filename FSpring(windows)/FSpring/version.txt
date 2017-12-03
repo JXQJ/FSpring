@@ -1,1 +1,1 @@
-<fspring-version>1.2</fspring-version>
+<fspring-version>1.3</fspring-version>
