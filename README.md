@@ -7,7 +7,7 @@
 
 [FSpring(win64).zip](https://www.dropbox.com/s/e3e6nuvjmoxiy2a/FSpring%28win64%29.zip?dl=1) or `FSpring/FSpring(windows)/FSpring(win64)/`
 
-[FSpring(linux64).tar.gz](https://www.dropbox.com/s/b166olaybi8r53j/FSpring%28linux64%29.tar.gz?dl=1) or `FSpring/FSpring(ubuntu)/FSpring(linux64)/`
+[FSpring(linux64).tar.gz](https://www.dropbox.com/s/qhc8vdv8cog2i18/FSpring%28linux64%29.tar.gz?dl=1) or `FSpring/FSpring(ubuntu)/FSpring(linux64)/`
 
 ### Requirement
 * **Windows**
